@@ -117,9 +117,12 @@ function M.send(text)
   if not text or text == "" then
     return
   end
-  terminal.focus_window()
-  terminal.send(text)
-  vim.cmd("startinsert")
+  terminal.focus()
+  -- Feed text + CR into terminal mode via the typeahead buffer.
+  -- This mirrors actual user typing and avoids chansend issues where
+  -- the terminal process doesn't pick up programmatic PTY writes.
+  local keys = vim.api.nvim_replace_termcodes(text .. "<CR>", true, false, true)
+  vim.api.nvim_feedkeys(keys, "n", false)
 end
 
 --- Print session status.
