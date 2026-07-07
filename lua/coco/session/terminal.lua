@@ -137,22 +137,26 @@ function M.toggle()
   end
 end
 
---- Focus the CoCo terminal window.
-function M.focus()
+--- Focus the CoCo terminal window without entering terminal mode.
+function M.focus_window()
   local bufnr = state.get().terminal_bufnr
   if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
     local wins = vim.fn.win_findbuf(bufnr)
     if #wins > 0 then
       vim.api.nvim_set_current_win(wins[1])
-      vim.cmd("startinsert")
       return
     end
     vim.cmd("vertical botright split")
     vim.api.nvim_win_set_buf(0, bufnr)
-    vim.cmd("startinsert")
     return
   end
   M.open()
+end
+
+--- Focus the CoCo terminal window.
+function M.focus()
+  M.focus_window()
+  vim.cmd("startinsert")
 end
 
 --- Send text to the running terminal job.
@@ -168,7 +172,10 @@ function M.send(text)
   end
   local channel = vim.bo[bufnr].channel
   if channel and channel ~= 0 then
-    vim.fn.chansend(channel, text:gsub("\n$", "") .. "\n")
+    -- Use \r (CR) instead of \n (LF) to submit. Terminal programs in raw mode
+    -- expect CR for Enter (same as what a real keypress sends to the PTY).
+    local payload = text:gsub("\n$", "") .. "\r"
+    vim.fn.chansend(channel, payload)
   else
     log.warn("terminal job channel not available")
   end

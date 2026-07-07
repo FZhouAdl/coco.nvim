@@ -117,12 +117,9 @@ function M.send(text)
   if not text or text == "" then
     return
   end
-  terminal.focus()
-  -- Send after focus/startinsert takes effect so the terminal is in the
-  -- correct mode and Neovim redraws the sent text.
-  vim.schedule(function()
-    terminal.send(text)
-  end)
+  terminal.focus_window()
+  terminal.send(text)
+  vim.cmd("startinsert")
 end
 
 --- Print session status.
