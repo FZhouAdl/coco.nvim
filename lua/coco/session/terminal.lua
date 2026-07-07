@@ -58,6 +58,10 @@ local function open_snacks()
     return open_native()
   end
   local cfg = config.get().ui.terminal
+  local position = cfg.position
+  if position == "left" or position == "right" or position == "top" or position == "bottom" then
+    return open_native()
+  end
   local parts = { config.get().cli.cmd }
   for _, arg in ipairs(config.get().cli.args or {}) do
     table.insert(parts, vim.fn.shellescape(arg))
@@ -66,7 +70,7 @@ local function open_snacks()
     env = {
       COCO_MCP_TOOL_TIMEOUT_MS = tostring(config.get().cli.mcp_tool_timeout_ms),
     },
-    position = cfg.position,
+    position = position,
   })
   return t and t.buf
 end
