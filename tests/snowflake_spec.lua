@@ -111,7 +111,7 @@ describe("snowflake object lookup", function()
     snowflake._set_clock_offset(0)
   end)
 
-  it("returns pending on cold lookup and caches result", function()
+  it("returns final result on cold lookup and caches result", function()
     local calls = 0
     async.spawn = function(cmd, _, cb)
       calls = calls + 1
@@ -122,16 +122,8 @@ describe("snowflake object lookup", function()
     snowflake.lookup("DB.SCHEMA.ORDERS", function(_, r)
       result1 = r
     end)
-    vim.wait(500, function()
-      return result1 ~= nil
-    end)
     assert.is_not_nil(result1)
-    assert.equals(true, result1.pending)
-
-    -- Wait for background fetch.
-    vim.wait(1000, function()
-      return calls >= 1
-    end)
+    assert.equals("ORDERS", result1.name)
 
     local result2
     snowflake.lookup("DB.SCHEMA.ORDERS", function(_, r)
@@ -141,27 +133,53 @@ describe("snowflake object lookup", function()
     assert.equals("ORDERS", result2.name)
   end)
 
+  it("returns pending sentinel via lookup_poll and caches result", function()
+    async.spawn = function(_, _, cb)
+      cb({ code = 0, stdout = vim.json.encode({ name = "X" }) })
+    end
+
+    local first
+    snowflake.lookup_poll("T", function(_, r)
+      first = r
+    end)
+    assert.is_not_nil(first)
+    assert.equals(true, first.pending)
+
+    -- Background fetch completes; cache is populated.
+    vim.wait(500, function()
+      return true
+    end)
+
+    local second
+    snowflake.lookup_poll("T", function(_, r)
+      second = r
+    end)
+    assert.equals("X", second.name)
+  end)
+
   it("evicts cache after ttl", function()
     async.spawn = function(_, _, cb)
       cb({ code = 0, stdout = vim.json.encode({ name = "X" }) })
     end
 
-    snowflake.lookup("T", function() end)
-    vim.wait(500, function()
-      return true
-    end)
-
     local first
     snowflake.lookup("T", function(_, r)
       first = r
     end)
+    vim.wait(1000, function()
+      return first ~= nil
+    end)
     assert.equals("X", first.name)
 
     snowflake._set_clock_offset(400000)
+    local refetched
     snowflake.lookup("T", function(_, r)
-      first = r
+      refetched = r
     end)
-    assert.equals(true, first.pending)
+    vim.wait(1000, function()
+      return refetched ~= nil
+    end)
+    assert.equals("X", refetched.name)
   end)
 end)
 

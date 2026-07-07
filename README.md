@@ -85,7 +85,7 @@ require("coco").setup({
   },
   permissions = {
     mode = "confirm",
-    confirm = { openDiff = false, saveDocument = false },
+    confirm = { openDiff = true, saveDocument = true },
   },
   context = { selection_debounce_ms = 50 },
   log = { level = "info", file = vim.fn.stdpath("cache") .. "/coco.log" },

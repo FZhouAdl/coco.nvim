@@ -183,6 +183,9 @@ local function fetch(name, key)
   try_table_details(try_object_search)
 end
 
+--- Asynchronous lookup. `cb` is invoked exactly once with the final result
+--- or an error. Concurrent callers for the same key are deduplicated onto a
+--- single subprocess.
 ---@param name string
 ---@param cb fun(err: string|nil, result: table|string|nil)
 function M.lookup(name, cb)
@@ -210,8 +213,6 @@ function M.lookup(name, cb)
   pending[key] = { cb }
 
   fetch(name, key)
-  -- Return pending sentinel immediately; agent can poll getSnowflakeObject.
-  cb(nil, { pending = true, message = "lookup pending; retry shortly" })
 end
 
 --- Blocking variant for placeholder expansion.
@@ -229,9 +230,6 @@ function M.lookup_sync(name, timeout_ms, cb)
 
   local done = false
   M.lookup(name, function(err, result)
-    if result and result.pending then
-      return
-    end
     done = true
     cb(err, result)
   end)
@@ -239,6 +237,35 @@ function M.lookup_sync(name, timeout_ms, cb)
   vim.wait(timeout_ms or 30000, function()
     return done
   end, 10)
+end
+
+--- Poll variant for MCP getSnowflakeObject. Returns the cached result
+--- immediately, or triggers a background lookup and returns a pending
+--- sentinel. The callback is never double-fired.
+---@param name string
+---@param cb fun(err: string|nil, result: table|string|nil)
+function M.lookup_poll(name, cb)
+  prune_cache()
+  local key = cache_key(name)
+  local entry = cache[key]
+  if entry and entry.expires > now_ms() then
+    touch(key)
+    cb(nil, entry.result)
+    return
+  end
+
+  local s = state.get()
+  if not s.connection then
+    cb("no active Snowflake connection", nil)
+    return
+  end
+
+  if not pending[key] then
+    pending[key] = {}
+    fetch(name, key)
+  end
+
+  cb(nil, { pending = true, message = "lookup pending; retry shortly" })
 end
 
 return M

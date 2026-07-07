@@ -388,7 +388,7 @@ M.register("openFile", {
           local end_line = args.endLine
           local end_col = args.endCol or #vim.api.nvim_get_current_line()
           vim.fn.setpos("'<", { 0, line, col, 0 })
-          vim.fn.setpos(">", { 0, end_line, end_col, 0 })
+          vim.fn.setpos("'>", { 0, end_line, end_col, 0 })
         end
       end
     end)
@@ -408,13 +408,9 @@ M.register("getSnowflakeObject", {
   required = { "name" },
   additionalProperties = false,
 }, function(args, cb)
-  snowflake.lookup(args.name, function(err, result)
+  snowflake.lookup_poll(args.name, function(err, result)
     if err then
       cb(err_result("LOOKUP_FAILED", err))
-      return
-    end
-    if result == nil then
-      cb(ok_result({ pending = true, message = "lookup pending; retry shortly" }))
       return
     end
     cb(ok_result(result))
