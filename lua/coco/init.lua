@@ -20,6 +20,7 @@ local M = {}
 ---@field connection fun()
 ---@field select_model fun()
 ---@field mode fun(name: string)
+---@field complete fun()
 
 --- Setup the plugin.
 ---@param opts table|nil
@@ -166,6 +167,11 @@ function M.mode(name)
   local slash = "/" .. name
   M.send(slash)
   vim.notify("[coco] mode set to " .. name, vim.log.levels.INFO)
+end
+
+--- Trigger ghost-text completion at the cursor.
+function M.complete()
+  require("coco.ui.input").complete()
 end
 
 return M

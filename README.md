@@ -2,7 +2,7 @@
 
 A Neovim bridge for the **Snowflake Cortex Code** (`cortex`) CLI.
 
-> Work in progress. Phase 3 (Snowflake context) is being implemented.
+> Work in progress. Phase 4 (REST / inline UI) is being implemented.
 
 ## Install (lazy.nvim)
 
@@ -31,6 +31,7 @@ A Neovim bridge for the **Snowflake Cortex Code** (`cortex`) CLI.
 | `:CocoConnection` | Switch Snowflake connection |
 | `:CocoSelectModel` | Select CoCo model |
 | `:CocoMode [confirm|plan|bypass]` | Cycle/set permission mode |
+| `:CocoComplete` | Trigger ghost-text completion |
 
 See `docs/coco-neovim-v2.md` for the full design.
 

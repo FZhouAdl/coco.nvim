@@ -55,6 +55,10 @@ function M.register()
     api.mode(args.args ~= "" and args.args or nil)
   end, { nargs = "?", desc = "Cycle/set CoCo permission mode" })
 
+  vim.api.nvim_create_user_command("CocoComplete", function()
+    api.complete()
+  end, { desc = "Trigger CoCo ghost-text completion" })
+
   vim.api.nvim_create_user_command("CocoStatus", function()
     api.status()
   end, { desc = "Show CoCo session status" })

@@ -74,6 +74,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - State now tracks connection, role, warehouse, model, credits, and mode.
 - Phase 3 tests (`tests/snowflake_spec.lua`) for connection parsing, object
   lookup cache/TTL, cost caching, statusline credits, and `@object:` expansion.
+- Phase 4 "REST / Inline" implementation (optional, gated by
+  `transport.rest.enabled`).
+- REST auth helper (`lua/coco/rest/auth.lua`) reading PAT from env or
+  `~/.snowflake/connections.toml`.
+- Cortex REST client (`lua/coco/rest/client.lua`) streaming via `curl` and SSE.
+- Incremental SSE parser (`lua/coco/rest/sse.lua`) supporting split chunks,
+  `data:` / `event:` / `id:` fields, `[DONE]`, and `Last-Event-ID`.
+- Inline UI (`lua/coco/ui/virt.lua`) for ghost-text completion with
+  start/update/accept/cancel.
+- One-shot `:CocoAsk` REST variant that streams into a markdown scratch float.
+- `:CocoComplete` manual trigger for ghost-text completion.
+- Context compaction (`lua/coco/context/compact.lua`) preserving system
+  instructions + latest 10 turns within a token budget.
+- Phase 4 tests (`tests/rest_spec.lua`) for auth, SSE parsing, compaction, and
+  virt completion.
 
 ### Notes
 - Snowflake metadata, REST/SSE, and inline UI remain stubbed and will be
