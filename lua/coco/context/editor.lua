@@ -35,14 +35,16 @@ function M.selection()
     local vend = vim.fn.getpos(".")
     sl = math.min(vstart[2], vend[2])
     el = math.max(vstart[2], vend[2])
+    sc = math.min(vstart[3], vend[3])
+    ec = math.max(vstart[3], vend[3])
     text = M.get_visual_selection_text()
   else
     local pos = vim.api.nvim_win_get_cursor(0)
     sl, el = pos[1], pos[1]
+    sc = pos[2] + 1
+    ec = sc
     text = vim.api.nvim_get_current_line()
   end
-  sc = 1
-  ec = #vim.api.nvim_get_current_line()
   return {
     filePath = bufname,
     startLine = sl or 1,
@@ -120,11 +122,7 @@ end
 ---@return { cwd: string, git_root: string|nil, workspace_folders: string[] }
 function M.workspace_info()
   local cwd = vim.fn.getcwd()
-  local git_root
-  local ok, root = pcall(vim.fn.system, { "git", "-C", cwd, "rev-parse", "--show-toplevel" })
-  if ok and root and root ~= "" then
-    git_root = vim.trim(root)
-  end
+  local git_root = vim.fs.root(0, ".git") or vim.fs.root(cwd, ".git")
   return {
     cwd = cwd,
     git_root = git_root,

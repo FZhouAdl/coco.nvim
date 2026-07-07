@@ -17,6 +17,12 @@ function M.handle(req, cb)
     return
   end
 
+  -- Notifications (no id) must not receive a response.
+  if req.id == nil then
+    cb(nil)
+    return
+  end
+
   local method = req.method
   if method == "initialize" then
     cb(
@@ -26,8 +32,6 @@ function M.handle(req, cb)
         serverInfo = { name = "coco-nvim", version = "0.2.0" },
       })
     )
-  elseif method == "notifications/initialized" then
-    cb(nil)
   elseif method == "tools/list" then
     cb(jsonrpc.make_response(req.id, { tools = tools.list() }))
   elseif method == "tools/call" then

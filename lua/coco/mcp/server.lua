@@ -275,9 +275,15 @@ function M.start(opts, cb)
   max_conns = opts.max_concurrent or 32
   idle_ms = opts.idle_timeout_ms or 5000
 
+  local host = opts.host or "127.0.0.1"
+  if host ~= "127.0.0.1" and host ~= "localhost" and host ~= "::1" then
+    cb("mcp server must bind to a loopback address", nil)
+    return
+  end
+
   local s = vim.loop.new_tcp()
   local ok, bound_port_or_err = pcall(function()
-    local bind_ok, bind_err = s:bind(opts.host, opts.port)
+    local bind_ok, bind_err = s:bind(host, opts.port)
     if not bind_ok then
       error(bind_err)
     end

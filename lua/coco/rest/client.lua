@@ -7,6 +7,30 @@ local json = require("coco.util.json")
 
 local M = {}
 
+---@param ev table
+---@return table|nil
+local function parse_sse_event(ev)
+  if ev.data == "" or ev.data == "[DONE]" then
+    return nil
+  end
+  local ok, parsed = pcall(vim.json.decode, ev.data, { object = true, array = true })
+  if not ok then
+    return { type = "raw", data = ev.data }
+  end
+  local choices = parsed.choices
+  if type(choices) == "table" and #choices > 0 then
+    local delta = choices[1].delta
+    if delta then
+      if delta.content then
+        return { type = "text", text = delta.content }
+      elseif delta.tool_calls then
+        return { type = "tool_use", tool_calls = delta.tool_calls }
+      end
+    end
+  end
+  return { type = "chunk", chunk = parsed }
+end
+
 ---@class CocoRestCompleteOpts
 ---@field messages table[]
 ---@field stream boolean|nil
@@ -74,30 +98,6 @@ function M.complete(opts, cb)
 
   -- Return a cancellation handle via callback metadata is not supported here;
   -- callers can keep a reference to proc if needed.
-end
-
----@param ev table
----@return table|nil
-local function parse_sse_event(ev)
-  if ev.data == "" or ev.data == "[DONE]" then
-    return nil
-  end
-  local ok, parsed = pcall(vim.json.decode, ev.data, { object = true, array = true })
-  if not ok then
-    return { type = "raw", data = ev.data }
-  end
-  local choices = parsed.choices
-  if type(choices) == "table" and #choices > 0 then
-    local delta = choices[1].delta
-    if delta then
-      if delta.content then
-        return { type = "text", text = delta.content }
-      elseif delta.tool_calls then
-        return { type = "tool_use", tool_calls = delta.tool_calls }
-      end
-    end
-  end
-  return { type = "chunk", chunk = parsed }
 end
 
 ---@return string|nil

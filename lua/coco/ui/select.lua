@@ -10,9 +10,13 @@ local M = {}
 ---@param cb fun(item: any|nil)
 function M.pick(items, opts, cb)
   opts = opts or {}
-  local ok, _ = pcall(require, "snacks.picker")
-  if ok then
-    -- TODO: snacks picker integration.
+  local ok, snacks = pcall(require, "snacks.picker")
+  if ok and snacks and snacks.select then
+    snacks.select(items, {
+      prompt = opts.prompt or "Select: ",
+      format_item = opts.format or tostring,
+    }, cb)
+    return
   end
   vim.ui.select(items, {
     prompt = opts.prompt or "Select: ",

@@ -23,6 +23,42 @@ local registry = {} ---@type table<string, CocoTool>
 
 local SCHEMA_VIOLATION = "SCHEMA_VIOLATION"
 local DIFF_IN_FLIGHT = "DIFF_IN_FLIGHT"
+local OUTSIDE_WORKSPACE = "OUTSIDE_WORKSPACE"
+
+local call_counter = 0
+
+--- Canonicalize and validate a file path for MCP file tools.
+--- Returns canonical path or nil, error message.
+---@param raw string
+---@return string|nil
+---@return string|nil
+local function validate_file_path(raw)
+  if type(raw) ~= "string" or raw == "" then
+    return nil, "filePath must be a non-empty string"
+  end
+  -- Reject URI schemes and shell meta-characters.
+  if raw:match("^[a-zA-Z][a-zA-Z0-9+-.]*://") then
+    return nil, "filePath must be a filesystem path"
+  end
+  local normalized = vim.fs.normalize(raw)
+  -- Reject relative traversal outside cwd.
+  if normalized:find("%.%.") then
+    return nil, "filePath contains disallowed traversal"
+  end
+  local real = vim.uv.fs_realpath(normalized)
+  if not real then
+    return nil, "filePath does not exist: " .. normalized
+  end
+  local cwd = vim.fn.getcwd()
+  local rel = vim.fs.relpath(cwd, real)
+  if not rel then
+    return nil, "filePath outside workspace"
+  end
+  if rel:find("^%.%.") then
+    return nil, "filePath outside workspace"
+  end
+  return real, nil
+end
 
 --- Encode a result for an MCP text content item.
 ---@param obj any
@@ -154,7 +190,8 @@ function M.dispatch(call, cb)
     cb(err_result(SCHEMA_VIOLATION, verr))
     return
   end
-  local call_id = tostring(os.time()) .. "_" .. tostring(math.random(1000000))
+  call_counter = call_counter + 1
+  local call_id = tostring(vim.uv.hrtime()) .. "_" .. tostring(call_counter)
   state.dispatch({ type = "tool_start", id = call_id, tool = call.name, started = os.time() })
   local function finish(result)
     state.dispatch({ type = "tool_done", id = call_id })
@@ -228,13 +265,17 @@ M.register("getDiagnostics", {
 }, function(args, cb)
   async.schedule(function()
     local items = editor.diagnostics(args.uri)
-    local json = encode(items)
-    local truncated = false
-    if #json > 51200 then
-      truncated = true
-      items = { truncated = true, count = #items, message = "diagnostics truncated; call per-file" }
+    local cap = 50
+    local total = #items
+    local truncated = total > cap
+    if truncated then
+      local kept = {}
+      for i = 1, cap do
+        table.insert(kept, items[i])
+      end
+      items = kept
     end
-    cb(ok_result({ diagnostics = items, truncated = truncated }))
+    cb(ok_result({ diagnostics = items, total = total, truncated = truncated }))
   end)
 end)
 
@@ -268,10 +309,16 @@ M.register("saveDocument", {
   additionalProperties = false,
 }, function(args, cb)
   async.schedule(function()
+    local path, verr = validate_file_path(args.filePath)
+    if not path then
+      cb(err_result(OUTSIDE_WORKSPACE, verr or "invalid filePath"))
+      return
+    end
+
     local function do_save()
       local saved = false
       for _, b in ipairs(vim.api.nvim_list_bufs()) do
-        if vim.api.nvim_buf_get_name(b) == args.filePath then
+        if vim.api.nvim_buf_get_name(b) == path then
           local ok, err = pcall(vim.api.nvim_buf_call, b, function()
             vim.cmd("write")
           end)
@@ -282,12 +329,12 @@ M.register("saveDocument", {
           break
         end
       end
-      cb(ok_result({ filePath = args.filePath, saved = saved }))
+      cb(ok_result({ filePath = path, saved = saved }))
     end
 
     if require("coco.config").get().permissions.confirm.saveDocument then
       vim.ui.select({ "Yes", "No" }, {
-        prompt = "CoCo wants to save " .. args.filePath .. ": ",
+        prompt = "CoCo wants to save " .. path .. ": ",
       }, function(choice)
         if choice == "Yes" then
           do_save()
@@ -325,8 +372,14 @@ M.register("openFile", {
   additionalProperties = false,
 }, function(args, cb)
   async.schedule(function()
+    local path, verr = validate_file_path(args.filePath)
+    if not path then
+      cb(err_result(OUTSIDE_WORKSPACE, verr or "invalid filePath"))
+      return
+    end
+
     local ok, err = pcall(function()
-      vim.cmd("edit " .. vim.fn.fnameescape(args.filePath))
+      vim.cmd("edit " .. vim.fn.fnameescape(path))
       if args.startLine then
         local line = args.startLine
         local col = args.startCol or 1
@@ -334,8 +387,8 @@ M.register("openFile", {
         if args.endLine then
           local end_line = args.endLine
           local end_col = args.endCol or #vim.api.nvim_get_current_line()
-          vim.api.nvim_buf_set_mark(0, "<", line, col - 1, {})
-          vim.api.nvim_buf_set_mark(0, ">", end_line, end_col - 1, {})
+          vim.fn.setpos("'<", { 0, line, col, 0 })
+          vim.fn.setpos(">", { 0, end_line, end_col, 0 })
         end
       end
     end)

@@ -44,7 +44,7 @@ function M.compact(history, budget)
     used = used + turn_tokens(turn)
   end
 
-  -- Always preserve the last 10 turns verbatim.
+  -- Always preserve the last 10 turns verbatim, but only if they fit.
   local keep_latest = 10
   local split = math.max(1, #turns - keep_latest + 1)
   local older = {}
@@ -57,16 +57,24 @@ function M.compact(history, budget)
     end
   end
 
+  -- Drop oldest latest turns until the remainder fits the budget.
+  while #latest > 0 do
+    local latest_tokens = 0
+    for _, turn in ipairs(latest) do
+      latest_tokens = latest_tokens + turn_tokens(turn)
+    end
+    if used + latest_tokens <= budget then
+      break
+    end
+    table.remove(latest, 1)
+  end
+
   local latest_tokens = 0
   for _, turn in ipairs(latest) do
     latest_tokens = latest_tokens + turn_tokens(turn)
   end
 
-  local remaining = budget - used - latest_tokens
-  if remaining < 0 then
-    -- Even latest turns exceed budget; truncate them minimally.
-    remaining = 0
-  end
+  local remaining = math.max(0, budget - used - latest_tokens)
 
   -- Summarize older turns by concatenating and truncating to fit budget.
   if #older > 0 then

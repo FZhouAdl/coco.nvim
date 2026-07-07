@@ -29,8 +29,7 @@ local function rest_ask(prompt)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "# CoCo", "", "Thinking…" })
   float.open({ bufnr = bufnr })
 
-  local lines = { "# CoCo", "" }
-  local line_count = 2
+  local current_line = ""
 
   rest.complete({ messages = build_messages(prompt), stream = true }, function(chunk, done, err)
     if err then
@@ -48,22 +47,18 @@ local function rest_ask(prompt)
           return
         end
         local text = chunk.text
-        -- Append text, splitting on newlines.
+        -- Append text, splitting on newlines. Only the last buffer line is
+        -- rewritten; completed lines are appended once.
         local parts = vim.split(text, "\n", { plain = true })
         for i, part in ipairs(parts) do
           if i == 1 then
-            if lines[line_count] then
-              lines[line_count] = lines[line_count] .. part
-            else
-              line_count = line_count + 1
-              lines[line_count] = part
-            end
+            current_line = current_line .. part
           else
-            line_count = line_count + 1
-            lines[line_count] = part
+            vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, { part })
+            current_line = part
           end
         end
-        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+        vim.api.nvim_buf_set_lines(bufnr, -2, -1, false, { current_line })
       end)
     end
   end)
@@ -126,18 +121,15 @@ function M.complete()
   prompt = "Complete the following code:\n" .. prompt
 
   virt.start_completion("…")
+  local completion_parts = {}
   rest.complete({ messages = build_messages(prompt), stream = true }, function(chunk, done, err)
     if done or err then
       return
     end
     if chunk and chunk.type == "text" then
       vim.schedule(function()
-        local cur = virt.current_completion()
-        local text = cur and cur.text or ""
-        if text == "…" then
-          text = ""
-        end
-        virt.update_completion(text .. (chunk.text or ""))
+        table.insert(completion_parts, chunk.text or "")
+        virt.update_completion(table.concat(completion_parts))
       end)
     end
   end)

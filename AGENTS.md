@@ -33,7 +33,7 @@ CI: `.github/workflows/test.yml` runs `make test` on stable and nightly Neovim.
 
 - Entrypoint: `lua/coco/init.lua` → `setup()` registers commands.
 - Commands are defined in `lua/coco/plugin/commands.lua`.
-- Lazy-load stub: `plugin/coco.lua` only registers `:Coco`; everything else is registered after `setup()`.
+- Command stubs: `plugin/coco.lua` eagerly registers all `:Coco*` commands as thin stubs that load `lua/coco/plugin/commands.lua` on first use.
 - State: TEA-style store in `lua/coco/session/state.lua`; dispatch messages, never mutate `state` directly.
 - Async rule: any callback touching `vim.api` must be wrapped in `vim.schedule()` / `vim.schedule_wrap()`.
 - No external Lua deps in core code paths; use `vim.loop`, `vim.system`, `vim.json`.
@@ -42,11 +42,11 @@ CI: `.github/workflows/test.yml` runs `make test` on stable and nightly Neovim.
 
 These are enforced in code and must stay enforced:
 
-1. **MCP server binds only `127.0.0.1`**. The lock is in `config.lua`; do not allow configurable public binds.
-2. **Bearer tokens must never appear on argv**. `mcp/register.lua` currently passes the token via `-H "Authorization: Bearer ..."` — this is a known issue (see `code-review.md` #12); fix by stdin/env/file, not argv.
-3. **Do not use `password=` from `connections.toml` as a PAT**. `rest/auth.lua` currently falls back to `password`; this is a known issue (see `code-review.md` #5).
-4. **Redact secrets in logs**. `util/log.lua` already redacts `Authorization:` and `*_PAT`/`*_TOKEN`/`*_KEY`/`*_SECRET` env values.
-5. **File tool paths need workspace validation**. `openFile`/`saveDocument` in `mcp/tools.lua` currently lack a workspace jail (see `code-review.md` #3).
+1. **MCP server binds only `127.0.0.1`**. The lock is in `config.lua` and is also asserted at bind time in `mcp/server.lua`; do not allow configurable public binds.
+2. **Bearer tokens must never appear on argv**. `mcp/register.lua` writes the cortex `mcp.json` config file directly (including the `Authorization` header) and then runs `cortex mcp reconnect`, so the token is never passed on a command line.
+3. **Do not use `password=` from `connections.toml` as a PAT**. `rest/auth.lua` only accepts fields explicitly named PATs/tokens; a bare `password=` returns `nil`.
+4. **Redact secrets in logs**. `util/log.lua` redacts `Authorization:` and `*_PAT`/`*_TOKEN`/`*_KEY`/`*_SECRET` env values.
+5. **File tool paths need workspace validation**. `openFile`/`saveDocument` in `mcp/tools.lua` normalize paths with `vim.fs.normalize` + `vim.uv.fs_realpath`, reject URI schemes and `..` traversal, and enforce that the real path is inside the current working directory.
 
 ## Known pitfalls (verified in `code-review.md`)
 

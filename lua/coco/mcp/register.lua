@@ -1,4 +1,5 @@
 --- coco.nvim MCP registration lifecycle (Phase 2).
+-- Writes cortex mcp.json directly so the bearer token never appears on argv.
 
 local async = require("coco.util.async")
 local json = require("coco.util.json")
@@ -22,10 +23,29 @@ local function read_mcp_json()
   local data = fd:read("*a")
   fd:close()
   local ok, parsed = json.decode(data)
-  if not ok then
+  if not ok or type(parsed) ~= "table" then
     return nil
   end
   return parsed
+end
+
+--- Write the cortex mcp.json file atomically.
+---@param cfg table
+local function write_mcp_json(cfg)
+  local path = mcp_json_path()
+  local tmp = path .. ".tmp"
+  local dir = vim.fn.fnamemodify(path, ":h")
+  vim.fn.mkdir(dir, "p")
+  local fd = io.open(tmp, "w")
+  if not fd then
+    error("failed to open " .. tmp .. " for writing")
+  end
+  fd:write(json.encode(cfg))
+  fd:close()
+  local ok, err = os.rename(tmp, path)
+  if not ok then
+    error("failed to rename " .. tmp .. " to " .. path .. ": " .. tostring(err))
+  end
 end
 
 --- Extract the port from a URL like http://127.0.0.1:1234/mcp
@@ -93,14 +113,18 @@ local function prune_stale(server_name, expected_port, cb)
         cb(false)
       else
         log.info("mcp register: pruning stale registration for " .. server_name)
-        M.remove(server_name, function(_)
+        cfg.mcpServers[server_name] = nil
+        write_mcp_json(cfg)
+        async.spawn({ "cortex", "mcp", "reconnect", server_name }, { timeout = 30000 }, function(_)
           cb(true)
         end)
       end
     end)
   else
     log.info("mcp register: port mismatch for " .. server_name .. ", pruning")
-    M.remove(server_name, function(_)
+    cfg.mcpServers[server_name] = nil
+    write_mcp_json(cfg)
+    async.spawn({ "cortex", "mcp", "reconnect", server_name }, { timeout = 30000 }, function(_)
       cb(true)
     end)
   end
@@ -113,30 +137,33 @@ end
 function M.add(server_name, url, token, cb)
   local port = url_port(url)
   local function do_add()
-    async.spawn(
-      {
-        "cortex",
-        "mcp",
-        "add",
-        server_name,
-        url,
-        "--transport",
-        "http",
-        "-H",
-        "Authorization: Bearer " .. token,
+    local cfg = read_mcp_json() or { mcpServers = {} }
+    if type(cfg.mcpServers) ~= "table" then
+      cfg.mcpServers = {}
+    end
+    cfg.mcpServers[server_name] = {
+      type = "http",
+      url = url,
+      headers = {
+        Authorization = "Bearer " .. token,
       },
-      { timeout = 30000 },
-      function(obj)
-        if obj.code ~= 0 then
-          local err = (obj.stderr or "") ~= "" and obj.stderr or "cortex mcp add failed"
-          log.error("mcp add failed: " .. err)
-          cb(false, err)
-          return
-        end
-        log.info("mcp add succeeded for " .. server_name)
-        cb(true, nil)
+    }
+    local ok, write_err = pcall(write_mcp_json, cfg)
+    if not ok then
+      log.error("mcp add failed: " .. tostring(write_err))
+      cb(false, tostring(write_err))
+      return
+    end
+    async.spawn({ "cortex", "mcp", "reconnect", server_name }, { timeout = 30000 }, function(obj)
+      if obj.code ~= 0 then
+        local err = (obj.stderr or "") ~= "" and obj.stderr or "cortex mcp reconnect failed"
+        log.error("mcp reconnect failed: " .. err)
+        cb(false, err)
+        return
       end
-    )
+      log.info("mcp add succeeded for " .. server_name)
+      cb(true, nil)
+    end)
   end
 
   if port then
@@ -151,6 +178,11 @@ end
 ---@param server_name string
 ---@param cb fun(ok: boolean)
 function M.remove(server_name, cb)
+  local cfg = read_mcp_json()
+  if cfg and type(cfg.mcpServers) == "table" then
+    cfg.mcpServers[server_name] = nil
+    pcall(write_mcp_json, cfg)
+  end
   async.spawn({ "cortex", "mcp", "remove", server_name }, { timeout = 30000 }, function(obj)
     if obj.code ~= 0 then
       log.warn("mcp remove failed: " .. (obj.stderr or ""))

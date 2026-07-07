@@ -105,7 +105,7 @@ local defaults = {
   },
   permissions = {
     mode = "confirm",
-    confirm = { openDiff = false, saveDocument = false },
+    confirm = { openDiff = true, saveDocument = true },
   },
   context = { selection_debounce_ms = 50 },
   log = {
@@ -116,28 +116,6 @@ local defaults = {
 
 local config ---@type CocoConfig
 
-local function clone(t)
-  if type(t) ~= "table" then
-    return t
-  end
-  local c = {}
-  for k, v in pairs(t) do
-    c[k] = clone(v)
-  end
-  return c
-end
-
-local function deep_extend(dst, src)
-  for k, v in pairs(src or {}) do
-    if type(v) == "table" and type(dst[k]) == "table" then
-      deep_extend(dst[k], v)
-    else
-      dst[k] = clone(v)
-    end
-  end
-  return dst
-end
-
 local function warn(msg)
   vim.schedule(function()
     vim.notify("[coco] " .. msg, vim.log.levels.WARN)
@@ -146,7 +124,7 @@ end
 
 local function validate(cfg)
   if type(cfg.cli) ~= "table" then
-    cfg.cli = clone(defaults.cli)
+    cfg.cli = vim.deepcopy(defaults.cli)
     warn("invalid cli config; using defaults")
   end
   if type(cfg.cli.cmd) ~= "string" then
@@ -154,7 +132,7 @@ local function validate(cfg)
     warn("cli.cmd must be a string")
   end
   if type(cfg.cli.args) ~= "table" then
-    cfg.cli.args = clone(defaults.cli.args)
+    cfg.cli.args = vim.deepcopy(defaults.cli.args)
     warn("cli.args must be a table")
   end
   if type(cfg.cli.auto_start) ~= "boolean" then
@@ -167,7 +145,7 @@ local function validate(cfg)
   end
 
   if type(cfg.transport) ~= "table" then
-    cfg.transport = clone(defaults.transport)
+    cfg.transport = vim.deepcopy(defaults.transport)
     warn("invalid transport config; using defaults")
   end
   if type(cfg.transport.terminal) ~= "boolean" then
@@ -179,7 +157,7 @@ local function validate(cfg)
     warn("transport.mcp must be a boolean")
   end
   if type(cfg.transport.rest) ~= "table" then
-    cfg.transport.rest = clone(defaults.transport.rest)
+    cfg.transport.rest = vim.deepcopy(defaults.transport.rest)
     warn("transport.rest must be a table")
   end
   if type(cfg.transport.rest.enabled) ~= "boolean" then
@@ -188,7 +166,7 @@ local function validate(cfg)
   end
 
   if type(cfg.mcp) ~= "table" then
-    cfg.mcp = clone(defaults.mcp)
+    cfg.mcp = vim.deepcopy(defaults.mcp)
     warn("invalid mcp config; using defaults")
   end
   if type(cfg.mcp.host) ~= "string" then
@@ -217,7 +195,7 @@ local function validate(cfg)
   end
 
   if type(cfg.snowflake) ~= "table" then
-    cfg.snowflake = clone(defaults.snowflake)
+    cfg.snowflake = vim.deepcopy(defaults.snowflake)
     warn("invalid snowflake config; using defaults")
   end
   if cfg.snowflake.connection ~= nil and type(cfg.snowflake.connection) ~= "string" then
@@ -241,18 +219,18 @@ local function validate(cfg)
     warn("snowflake.auto_object_context must be a boolean")
   end
   if type(cfg.snowflake.object_cache) ~= "table" then
-    cfg.snowflake.object_cache = clone(defaults.snowflake.object_cache)
+    cfg.snowflake.object_cache = vim.deepcopy(defaults.snowflake.object_cache)
     warn("snowflake.object_cache must be a table")
   end
 
   if type(cfg.ui) ~= "table" then
-    cfg.ui = clone(defaults.ui)
+    cfg.ui = vim.deepcopy(defaults.ui)
     warn("invalid ui config; using defaults")
   end
 
   local valid_modes = { confirm = true, plan = true, bypass = true }
   if type(cfg.permissions) ~= "table" then
-    cfg.permissions = clone(defaults.permissions)
+    cfg.permissions = vim.deepcopy(defaults.permissions)
     warn("invalid permissions config; using defaults")
   end
   if not valid_modes[cfg.permissions.mode] then
@@ -260,12 +238,12 @@ local function validate(cfg)
     warn("permissions.mode must be confirm|plan|bypass")
   end
   if type(cfg.permissions.confirm) ~= "table" then
-    cfg.permissions.confirm = clone(defaults.permissions.confirm)
+    cfg.permissions.confirm = vim.deepcopy(defaults.permissions.confirm)
     warn("permissions.confirm must be a table")
   end
 
   if type(cfg.context) ~= "table" then
-    cfg.context = clone(defaults.context)
+    cfg.context = vim.deepcopy(defaults.context)
     warn("invalid context config; using defaults")
   end
   if type(cfg.context.selection_debounce_ms) ~= "number" then
@@ -274,7 +252,7 @@ local function validate(cfg)
   end
 
   if type(cfg.log) ~= "table" then
-    cfg.log = clone(defaults.log)
+    cfg.log = vim.deepcopy(defaults.log)
     warn("invalid log config; using defaults")
   end
   local valid_levels = { debug = true, info = true, warn = true, error = true }
@@ -293,9 +271,9 @@ end
 function M.setup(opts)
   opts = opts or {}
   if vim.g.coco_opts and type(vim.g.coco_opts) == "table" then
-    opts = deep_extend(clone(vim.g.coco_opts), opts)
+    opts = vim.tbl_deep_extend("force", vim.deepcopy(vim.g.coco_opts), opts)
   end
-  config = deep_extend(clone(defaults), opts)
+  config = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts)
   validate(config)
 end
 

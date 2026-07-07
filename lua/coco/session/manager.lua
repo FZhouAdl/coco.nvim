@@ -11,24 +11,11 @@ local handler = require("coco.mcp.handler")
 
 local M = {}
 
----@type CocoAsyncHandle|nil
-local probe_handle
-
---- Generate a random hex token by reading /dev/urandom.
+--- Generate a random hex token using libuv's CSPRNG.
 ---@param bytes number
 ---@return string
 local function random_token(bytes)
-  local fd = io.open("/dev/urandom", "rb")
-  if not fd then
-    -- Fallback: not cryptographically secure, should rarely happen on POSIX.
-    local parts = {}
-    for _ = 1, bytes do
-      table.insert(parts, string.format("%02x", math.random(0, 255)))
-    end
-    return table.concat(parts)
-  end
-  local raw = fd:read(bytes)
-  fd:close()
+  local raw = vim.uv.random(bytes)
   local parts = {}
   for i = 1, #raw do
     table.insert(parts, string.format("%02x", raw:byte(i)))
@@ -119,13 +106,9 @@ function M.stop()
   terminal.close()
   register.remove(config.get().mcp.server_name, function(_)
     server.stop()
+    state.dispatch({ type = "stopped" })
+    log.info("CoCo session stopped")
   end)
-  if probe_handle then
-    probe_handle.cancel()
-    probe_handle = nil
-  end
-  state.dispatch({ type = "stopped" })
-  log.info("CoCo session stopped")
 end
 
 --- Send text to the terminal.

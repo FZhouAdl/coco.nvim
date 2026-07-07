@@ -22,20 +22,20 @@ function M.get_pat()
   local data = fd:read("*a")
   fd:close()
 
-  local active = config_active_connection() or "default"
+  local active = M.config_active_connection() or "default"
   local in_section = false
   for line in data:gmatch("[^\r\n]+") do
     local section = line:match("^%s*%[(.-)%]%s*$")
     if section then
       in_section = section == active
     elseif in_section then
-      local token = line:match("^%s*token%s*=%s*[\"']?([^\"']+)[\"']?%s*$")
+      local token = line:match("^%s*token%s*=%s*[%\"']?([^%\"']+)[%\"']?%s*$")
       if token and token ~= "" then
         return token
       end
-      local pwd = line:match("^%s*password%s*=%s*[\"']?([^\"']+)[\"']?%s*$")
-      if pwd and pwd ~= "" then
-        return pwd
+      local pat = line:match("^%s*pat%s*=%s*[%\"']?([^%\"']+)[%\"']?%s*$")
+      if pat and pat ~= "" then
+        return pat
       end
     end
   end
@@ -43,7 +43,7 @@ function M.get_pat()
 end
 
 ---@return string|nil
-function config_active_connection()
+function M.config_active_connection()
   local ok, conn = pcall(function()
     return require("coco.config").get().snowflake.connection
   end)

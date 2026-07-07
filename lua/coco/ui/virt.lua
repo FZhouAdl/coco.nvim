@@ -70,7 +70,12 @@ function M.accept_completion()
   local line = current_completion.line
   local text = current_completion.text
   local row = line
-  local col = #vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1]
+  local lines = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)
+  if not lines or not lines[1] then
+    M.cancel_completion()
+    return
+  end
+  local col = #lines[1]
   vim.api.nvim_buf_set_text(bufnr, row, col, row, col, { text })
   M.cancel_completion()
 end

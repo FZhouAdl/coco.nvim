@@ -6,10 +6,45 @@ if vim.g.loaded_coco then
 end
 vim.g.loaded_coco = true
 
-vim.api.nvim_create_user_command("Coco", function()
-  require("coco.plugin.commands").register()
-  vim.cmd("Coco")
-end, { desc = "Toggle CoCo (lazy-load)" })
+-- Eagerly register all user-facing commands as thin stubs that load the real
+-- handlers on first use. This avoids "Not an editor command" for users who
+-- run :CocoStart before :Coco.
+local command_specs = {
+  { name = "Coco", nargs = 0 },
+  { name = "CocoStart", nargs = "*" },
+  { name = "CocoStop", nargs = 0 },
+  { name = "CocoFocus", nargs = 0 },
+  { name = "CocoAsk", nargs = "?" },
+  { name = "CocoSend", nargs = "?" },
+  { name = "CocoAdd", nargs = "?" },
+  { name = "CocoConnection", nargs = 0 },
+  { name = "CocoSelectModel", nargs = 0 },
+  { name = "CocoMode", nargs = "?" },
+  { name = "CocoComplete", nargs = 0 },
+  { name = "CocoStatus", nargs = 0 },
+  { name = "CocoHealth", nargs = 0 },
+  { name = "CocoDiffAccept", nargs = 0 },
+  { name = "CocoDiffDeny", nargs = 0 },
+  { name = "CocoCloseAllDiffs", nargs = 0 },
+}
+
+local function lazy_register(name)
+  return function(opts)
+    require("coco.plugin.commands").register()
+    if opts.args and opts.args ~= "" then
+      vim.cmd(name .. " " .. opts.args)
+    else
+      vim.cmd(name)
+    end
+  end
+end
+
+for _, spec in ipairs(command_specs) do
+  vim.api.nvim_create_user_command(spec.name, lazy_register(spec.name), {
+    nargs = spec.nargs,
+    desc = "CoCo command (lazy-load)",
+  })
+end
 
 vim.api.nvim_create_autocmd("VimLeavePre", {
   group = vim.api.nvim_create_augroup("CocoCleanup", { clear = true }),
