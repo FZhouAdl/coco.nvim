@@ -118,11 +118,11 @@ function M.send(text)
     return
   end
   terminal.focus()
-  -- Feed text + CR into terminal mode via the typeahead buffer.
-  -- This mirrors actual user typing and avoids chansend issues where
-  -- the terminal process doesn't pick up programmatic PTY writes.
-  local keys = vim.api.nvim_replace_termcodes(text .. "<CR>", true, false, true)
-  vim.api.nvim_feedkeys(keys, "n", false)
+  -- Feed text into terminal mode. Use nvim_input which queues raw bytes
+  -- into Neovim's low-level input buffer, same path as real keystrokes.
+  vim.api.nvim_input(text)
+  -- Send Enter separately to ensure it isn't swallowed.
+  vim.api.nvim_input("\r")
 end
 
 --- Print session status.
