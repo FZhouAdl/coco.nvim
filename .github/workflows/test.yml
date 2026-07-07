@@ -13,9 +13,9 @@ jobs:
         nvim-version: [stable, nightly]
     steps:
       - uses: actions/checkout@v4
-      - uses: rhymond/setup-neovim-action@v1
+      - uses: MunifTanjim/setup-neovim-action@v1
         with:
-          neovim-version: ${{ matrix.nvim-version }}
+          tag: ${{ matrix.nvim-version }}
       - name: Run tests
         run: |
           make test
