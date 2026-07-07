@@ -117,12 +117,10 @@ function M.send(text)
   if not text or text == "" then
     return
   end
+  -- Send text first (chansend works regardless of current window/mode),
+  -- then switch focus so the user sees the terminal output.
+  terminal.send(text)
   terminal.focus()
-  -- Feed text into terminal mode. Use nvim_input which queues raw bytes
-  -- into Neovim's low-level input buffer, same path as real keystrokes.
-  vim.api.nvim_input(text)
-  -- Send Enter separately to ensure it isn't swallowed.
-  vim.api.nvim_input("\r")
 end
 
 --- Print session status.
