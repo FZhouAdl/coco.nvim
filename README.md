@@ -2,7 +2,7 @@
 
 A Neovim bridge for the **Snowflake Cortex Code** (`cortex`) CLI.
 
-> Work in progress. Phase 1 (terminal bridge) is being implemented.
+> Work in progress. Phase 2 (MCP server + native diffs) is being implemented.
 
 ## Install (lazy.nvim)
 
@@ -25,6 +25,9 @@ A Neovim bridge for the **Snowflake Cortex Code** (`cortex`) CLI.
 | `:CocoAdd <path> [l1] [l2]` | Add file/range to context |
 | `:CocoStatus` | Show session status |
 | `:CocoHealth` | Run `:checkhealth coco` |
+| `:CocoDiffAccept` | Accept the current diff |
+| `:CocoDiffDeny` | Deny the current diff |
+| `:CocoCloseAllDiffs` | Close all diff tabs |
 
 See `docs/coco-neovim-v2.md` for the full design.
 

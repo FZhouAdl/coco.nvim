@@ -40,9 +40,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI workflow (`.github/workflows/test.yml`) and `Makefile`.
 - README.md skeleton with install and command reference.
 
+- Phase 2 "MCP Server + Native Diffs" implementation.
+- JSON-RPC 2.0 framing with Content-Length (`lua/coco/mcp/jsonrpc.lua`).
+- Localhost HTTP MCP server on `vim.loop` (`lua/coco/mcp/server.lua`) with
+  bearer-token auth, 5s idle timeout, 32-connection cap, 413 body-cap, and
+  `X-Coco-Trace` headers.
+- MCP request handler (`lua/coco/mcp/handler.lua`) for `initialize`,
+  `tools/list`, and `tools/call`.
+- Tool registry + JSON-schema-lite validator (`lua/coco/mcp/tools.lua`) with
+  editor tools and diff tools wired.
+- MCP registration lifecycle (`lua/coco/mcp/register.lua`) using
+  `cortex mcp add/remove`, including stale-registration prune.
+- Native diff review UI (`lua/coco/ui/diff.lua`) with accept/deny/close-all
+  and `WinClosed` auto-reject.
+- Session manager (`lua/coco/session/manager.lua`) now starts the MCP server,
+  registers with `cortex`, and reports transport matrix `✅ ✅ ❌`.
+- Observability counters, in-flight tool tracking, and 401 burst detection.
+- `:checkhealth coco` now probes the active MCP port.
+- Component tests (`tests/mcp_spec.lua`, `tests/diff_spec.lua`) covering
+  JSON-RPC framing, server auth/routing, tool schema validation, and diff
+  accept/reject.
+
 ### Notes
-- MCP server, native diffs, Snowflake metadata, and REST/SSE are stubbed and
-  will be implemented in Phases 2–4.
+- Snowflake metadata, REST/SSE, and inline UI remain stubbed and will be
+  implemented in Phases 3–4.
 - The implementation follows `docs/coco-nvim-plan.md` and
   `docs/coco-neovim-v2.md` (design v2).
 

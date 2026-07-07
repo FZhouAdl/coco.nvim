@@ -1,0 +1,223 @@
+local jsonrpc = require("coco.mcp.jsonrpc")
+local server = require("coco.mcp.server")
+local tools = require("coco.mcp.tools")
+local state = require("coco.session.state")
+local async = require("coco.util.async")
+
+describe("jsonrpc", function()
+  it("writes a frame with Content-Length", function()
+    local frame = jsonrpc.write_frame({ jsonrpc = "2.0", id = 1, result = {} })
+    assert.is_truthy(frame:find("Content%-Length:"))
+    assert.is_truthy(frame:find("\r\n\r\n"))
+  end)
+
+  it("reads a round-tripped frame", function()
+    local msg = { jsonrpc = "2.0", id = 5, result = { ok = true } }
+    local frame = jsonrpc.write_frame(msg)
+    local parsed, tail, err = jsonrpc.read_frame(frame)
+    assert.is_nil(err)
+    assert.is_nil(tail)
+    assert.equals(5, parsed.id)
+    assert.equals(true, parsed.result.ok)
+  end)
+
+  it("returns nil with tail when buffer is incomplete", function()
+    local frame = jsonrpc.write_frame({ jsonrpc = "2.0", id = 1, result = {} })
+    local parsed, tail, err = jsonrpc.read_frame(frame:sub(1, 10))
+    assert.is_nil(parsed)
+    assert.is_nil(err)
+    assert.equals(10, #tail)
+  end)
+
+  it("returns parse error for malformed JSON", function()
+    local frame = "Content-Length: 5\r\n\r\nhello"
+    local parsed, tail, err = jsonrpc.read_frame(frame)
+    assert.is_nil(parsed)
+    assert.equals("parse error", err)
+    assert.equals("", tail)
+  end)
+end)
+
+describe("mcp server", function()
+  local token = "test-token-1234"
+  local captured = {}
+
+  before_each(function()
+    server.stop()
+    captured = {}
+  end)
+
+  after_each(function()
+    server.stop()
+  end)
+
+  local function handler(req, cb)
+    table.insert(captured, req)
+    cb({ jsonrpc = "2.0", id = req.id, result = { echo = req.method } })
+  end
+
+  local function http_post(port, path, body, auth)
+    local done = false
+    local code, resp = "", ""
+    local cmd = {
+      "curl",
+      "-s",
+      "-o",
+      "/tmp/coco_test_resp",
+      "-w",
+      "%{http_code}",
+      "-X",
+      "POST",
+      "http://127.0.0.1:" .. port .. path,
+      "-H",
+      "Content-Type: application/json",
+    }
+    if auth then
+      table.insert(cmd, "-H")
+      table.insert(cmd, "Authorization: Bearer " .. auth)
+    end
+    table.insert(cmd, "-d")
+    table.insert(cmd, body)
+    async.spawn(cmd, { timeout = 3000 }, function(obj)
+      code = obj.code == 0 and vim.trim(obj.stdout) or ""
+      local fd = io.open("/tmp/coco_test_resp", "r")
+      resp = fd and fd:read("*a") or ""
+      if fd then
+        fd:close()
+      end
+      done = true
+    end)
+    vim.wait(4000, function()
+      return done
+    end)
+    return code, resp
+  end
+
+  it("starts on a random port and responds to valid request", function()
+    local started_port
+    server.start({
+      host = "127.0.0.1",
+      port = 0,
+      token = token,
+      handler = handler,
+    }, function(err, port)
+      assert.is_nil(err)
+      assert.is_number(port)
+      started_port = port
+    end)
+    vim.wait(1000, function()
+      return started_port ~= nil
+    end)
+    assert.is_number(started_port)
+
+    local body = vim.json.encode({ jsonrpc = "2.0", id = 1, method = "ping" })
+    local code, resp = http_post(started_port, "/mcp", body, token)
+    assert.equals("200", code)
+    assert.is_truthy(resp:find("ping"))
+  end)
+
+  it("returns 401 for bad token", function()
+    local started_port
+    server.start({
+      host = "127.0.0.1",
+      port = 0,
+      token = token,
+      handler = handler,
+    }, function(err, port)
+      assert.is_nil(err)
+      assert.is_number(port)
+      started_port = port
+    end)
+    vim.wait(1000, function()
+      return started_port ~= nil
+    end)
+
+    local body = vim.json.encode({ jsonrpc = "2.0", id = 1, method = "ping" })
+    local code, resp = http_post(started_port, "/mcp", body, "wrong-token")
+    assert.equals("401", code)
+    assert.equals("", resp)
+  end)
+
+  it("returns 404 for wrong route", function()
+    local started_port
+    server.start({
+      host = "127.0.0.1",
+      port = 0,
+      token = token,
+      handler = handler,
+    }, function(err, port)
+      assert.is_nil(err)
+      assert.is_number(port)
+      started_port = port
+    end)
+    vim.wait(1000, function()
+      return started_port ~= nil
+    end)
+
+    local body = vim.json.encode({ jsonrpc = "2.0", id = 1, method = "ping" })
+    local code, _ = http_post(started_port, "/wrong", body, token)
+    assert.equals("404", code)
+  end)
+end)
+
+describe("tool registry", function()
+  before_each(function()
+    tools.reset()
+    state.reset()
+  end)
+
+  it("rejects unknown fields", function()
+    tools.register("echo", {
+      type = "object",
+      properties = { msg = { type = "string" } },
+      additionalProperties = false,
+    }, function(args, cb)
+      cb({ content = { { type = "text", text = args.msg } } })
+    end)
+
+    local result
+    tools.dispatch({ name = "echo", arguments = { msg = "hi", extra = 1 } }, function(r)
+      result = r
+    end)
+    assert.is_not_nil(result)
+    assert.equals(true, result.isError)
+    local parsed = vim.json.decode(result.content[1].text)
+    assert.equals("SCHEMA_VIOLATION", parsed.code)
+  end)
+
+  it("rejects missing required field", function()
+    tools.register("openFile", {
+      type = "object",
+      properties = { filePath = { type = "string" } },
+      required = { "filePath" },
+      additionalProperties = false,
+    }, function(_, cb)
+      cb({ content = {} })
+    end)
+
+    local result
+    tools.dispatch({ name = "openFile", arguments = {} }, function(r)
+      result = r
+    end)
+    assert.is_not_nil(result)
+    assert.equals(true, result.isError)
+  end)
+
+  it("dispatches a valid call", function()
+    tools.register("echo", {
+      type = "object",
+      properties = { msg = { type = "string" } },
+      additionalProperties = false,
+    }, function(args, cb)
+      cb({ content = { { type = "text", text = args.msg } } })
+    end)
+
+    local result
+    tools.dispatch({ name = "echo", arguments = { msg = "hello" } }, function(r)
+      result = r
+    end)
+    assert.is_not_nil(result)
+    assert.is_nil(result.isError)
+    assert.equals("hello", result.content[1].text)
+  end)
+end)

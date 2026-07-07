@@ -34,7 +34,11 @@ local function open_native()
       .. math.floor(vim.o.lines * width)
       .. "split"
   end
-  vim.cmd(split_cmd .. " | terminal " .. config.get().cli.cmd)
+  local parts = { config.get().cli.cmd }
+  for _, arg in ipairs(config.get().cli.args or {}) do
+    table.insert(parts, vim.fn.fnameescape(arg))
+  end
+  vim.cmd(split_cmd .. " | terminal " .. table.concat(parts, " "))
   local bufnr = vim.api.nvim_get_current_buf()
   vim.bo[bufnr].buflisted = false
   return bufnr
@@ -47,8 +51,12 @@ local function open_snacks()
     return open_native()
   end
   local cfg = config.get().ui.terminal
+  local parts = { config.get().cli.cmd }
+  for _, arg in ipairs(config.get().cli.args or {}) do
+    table.insert(parts, arg)
+  end
   local t = Terminal.open({
-    cmd = config.get().cli.cmd,
+    cmd = table.concat(parts, " "),
     env = {
       COCO_MCP_TOOL_TIMEOUT_MS = tostring(config.get().cli.mcp_tool_timeout_ms),
     },

@@ -52,15 +52,25 @@ function M.register()
   end, { desc = "Run :checkhealth coco" })
 
   vim.api.nvim_create_user_command("CocoDiffAccept", function()
-    vim.notify("[coco] diff accept not yet implemented (Phase 2)", vim.log.levels.WARN)
+    local ok, id = pcall(vim.api.nvim_buf_get_var, 0, "coco_diff_id")
+    if ok and id then
+      require("coco.ui.diff").accept(id)
+    else
+      vim.notify("[coco] no diff in current buffer", vim.log.levels.WARN)
+    end
   end, { desc = "Accept the current CoCo diff" })
 
   vim.api.nvim_create_user_command("CocoDiffDeny", function()
-    vim.notify("[coco] diff deny not yet implemented (Phase 2)", vim.log.levels.WARN)
+    local ok, id = pcall(vim.api.nvim_buf_get_var, 0, "coco_diff_id")
+    if ok and id then
+      require("coco.ui.diff").deny(id)
+    else
+      vim.notify("[coco] no diff in current buffer", vim.log.levels.WARN)
+    end
   end, { desc = "Deny the current CoCo diff" })
 
   vim.api.nvim_create_user_command("CocoCloseAllDiffs", function()
-    vim.notify("[coco] close all diffs not yet implemented (Phase 2)", vim.log.levels.WARN)
+    require("coco.ui.diff").close_all()
   end, { desc = "Close all CoCo diff tabs" })
 end
 

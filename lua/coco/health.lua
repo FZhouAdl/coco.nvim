@@ -66,6 +66,20 @@ function M.check()
     end
     if s.transport.mcp and s.mcp_port then
       ok("MCP transport active on 127.0.0.1:" .. s.mcp_port)
+      local sock = vim.loop.new_tcp()
+      local reachable = false
+      sock:connect("127.0.0.1", s.mcp_port, function(err)
+        reachable = err == nil
+        pcall(sock.close, sock)
+      end)
+      vim.wait(500, function()
+        return reachable
+      end, 10)
+      if reachable then
+        ok("MCP port reachable")
+      else
+        warn("MCP port not reachable")
+      end
     elseif config.get().transport.mcp then
       warn("MCP transport not active")
     end
