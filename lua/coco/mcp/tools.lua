@@ -192,7 +192,7 @@ function M.dispatch(call, cb)
   end
   call_counter = call_counter + 1
   local call_id = tostring(vim.uv.hrtime()) .. "_" .. tostring(call_counter)
-  state.dispatch({ type = "tool_start", id = call_id, tool = call.name, started = os.time() })
+  state.dispatch({ type = "tool_start", id = call_id, tool = call.name, started = math.floor(vim.uv.hrtime() / 1e6) })
   local finish_called = false
   local function finish(result)
     if finish_called then
@@ -387,7 +387,21 @@ M.register("openFile", {
     end
 
     local ok, err = pcall(function()
-      vim.cmd("edit " .. vim.fn.fnameescape(path))
+      -- Find an existing window showing the file; otherwise open a new split
+      -- to avoid disrupting the current layout.
+      local target_win
+      for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        local buf = vim.api.nvim_win_get_buf(w)
+        if vim.api.nvim_buf_get_name(buf) == path then
+          target_win = w
+          break
+        end
+      end
+      if target_win then
+        vim.api.nvim_set_current_win(target_win)
+      else
+        vim.cmd("vsplit " .. vim.fn.fnameescape(path))
+      end
       if args.startLine then
         local line = args.startLine
         local col = args.startCol or 1

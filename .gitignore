@@ -2,3 +2,7 @@
 *.log
 .styluaignore
 .DS_Store
+.luarc.json
+.vscode/
+.idea/
+

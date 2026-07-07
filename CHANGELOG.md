@@ -128,12 +128,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Diff accept preserves POSIX trailing newline.
 - Snacks picker compatibility falls back to the global `Snacks.picker` object.
 - Cost query filters to the last 24 hours.
+- Tool in-flight timestamps use monotonic `vim.uv.hrtime()` consistently.
+- `snacks.input` double-submit guard in `:CocoAsk`.
+- `auto_start` config is honored in `setup()`.
+- Diff accept updates an existing buffer instead of writing behind its back.
+- REST requests time out after 120 seconds.
+- Terminal command arguments are shell-escaped.
+- Native terminal path passes `COCO_MCP_TOOL_TIMEOUT_MS` to the CLI.
+- `secure_eq` falls back safely when the `bit` module is absent.
+- `openFile` tool preserves window layout by reusing an existing window.
+- Config numeric fields are validated with sensible ranges.
 
 ### Security
 - Bearer tokens are no longer visible in `ps`/`/proc/<pid>/cmdline` during REST requests.
 - Added tests covering MCP token-file permissions, file-tool path traversal
   rejection, `password=` rejection in `connections.toml`, and bearer-token argv
   safety.
+
+### Docs
+- Fix `doc/coco.txt` default permission values.
+- Remove stale `setup({ keymaps = true })` reference from `doc/coco.txt`.
+- Remove duplicate "Planned" entries from `CHANGELOG.md`.
 
 ### Notes
 - All five phases from `docs/coco-nvim-plan.md` are now implemented.
@@ -166,40 +181,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - Terminal Bridge (MVP)
 
-_Planned._
 - `:CocoStart`, `:Coco`, `:CocoAsk`, `:CocoSend`, `:CocoAdd`
 - Terminal-wrapped `cortex` CLI with snacks.nvim/native fallback
 - Placeholder expansion (`@this`, `@buffer`, `@diagnostics`, etc.)
 - Statusline component and `:checkhealth coco`
 
-## [0.2.0] - MCP Server + Native Diffs
-
-_Planned._
-- Localhost HTTP MCP server on `vim.loop`
-- Editor tools: `openFile`, `openDiff`, `getCurrentSelection`, `getDiagnostics`, etc.
-- Non-blocking diff review with hunk accept/reject
-
-## [0.3.0] - Snowflake Context
-
-_Planned._
-- `@object:<NAME>` metadata injection
-- Connection/role/warehouse discovery
-- Cost feedback via `CORTEX_REST_API_USAGE_HISTORY`
-
-## [0.4.0] - REST / Inline (Optional)
-
-_Planned._
-- Direct Cortex REST/SSE client
-- Ghost-text completion and one-shot answers
-
-## [1.0.0] - Polish
-
-_Planned._
-- Full test matrix, docs, packaging (lazy.nvim / vim.pack), threat-model verification
-
-[Unreleased]: https://github.com/you/coco.nvim/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/you/coco.nvim/releases/tag/v0.1.0
-[0.2.0]: https://github.com/you/coco.nvim/releases/tag/v0.2.0
-[0.3.0]: https://github.com/you/coco.nvim/releases/tag/v0.3.0
-[0.4.0]: https://github.com/you/coco.nvim/releases/tag/v0.4.0
-[1.0.0]: https://github.com/you/coco.nvim/releases/tag/v1.0.0
+[Unreleased]: https://github.com/you/coco.nvim/compare/HEAD

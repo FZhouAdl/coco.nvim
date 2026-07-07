@@ -139,9 +139,9 @@ local function validate(cfg)
     cfg.cli.auto_start = defaults.cli.auto_start
     warn("cli.auto_start must be a boolean")
   end
-  if type(cfg.cli.mcp_tool_timeout_ms) ~= "number" then
+  if type(cfg.cli.mcp_tool_timeout_ms) ~= "number" or cfg.cli.mcp_tool_timeout_ms <= 0 then
     cfg.cli.mcp_tool_timeout_ms = defaults.cli.mcp_tool_timeout_ms
-    warn("cli.mcp_tool_timeout_ms must be a number")
+    warn("cli.mcp_tool_timeout_ms must be a positive number")
   end
 
   if type(cfg.transport) ~= "table" then
@@ -177,21 +177,21 @@ local function validate(cfg)
     warn("mcp.host forced to 127.0.0.1 for security")
     cfg.mcp.host = "127.0.0.1"
   end
-  if type(cfg.mcp.port) ~= "number" then
+  if type(cfg.mcp.port) ~= "number" or cfg.mcp.port < 0 or cfg.mcp.port > 65535 then
     cfg.mcp.port = defaults.mcp.port
-    warn("mcp.port must be a number")
+    warn("mcp.port must be a number between 0 and 65535")
   end
   if type(cfg.mcp.server_name) ~= "string" then
     cfg.mcp.server_name = defaults.mcp.server_name
     warn("mcp.server_name must be a string")
   end
-  if type(cfg.mcp.token_bytes) ~= "number" then
+  if type(cfg.mcp.token_bytes) ~= "number" or cfg.mcp.token_bytes < 8 then
     cfg.mcp.token_bytes = defaults.mcp.token_bytes
-    warn("mcp.token_bytes must be a number")
+    warn("mcp.token_bytes must be at least 8")
   end
-  if type(cfg.mcp.max_body_bytes) ~= "number" then
+  if type(cfg.mcp.max_body_bytes) ~= "number" or cfg.mcp.max_body_bytes <= 0 then
     cfg.mcp.max_body_bytes = defaults.mcp.max_body_bytes
-    warn("mcp.max_body_bytes must be a number")
+    warn("mcp.max_body_bytes must be a positive number")
   end
 
   if type(cfg.snowflake) ~= "table" then
@@ -222,10 +222,29 @@ local function validate(cfg)
     cfg.snowflake.object_cache = vim.deepcopy(defaults.snowflake.object_cache)
     warn("snowflake.object_cache must be a table")
   end
+  local cache = cfg.snowflake.object_cache
+  if type(cache.size) ~= "number" or cache.size <= 0 then
+    cache.size = defaults.snowflake.object_cache.size
+    warn("snowflake.object_cache.size must be a positive number")
+  end
+  if type(cache.ttl_ms) ~= "number" or cache.ttl_ms < 0 then
+    cache.ttl_ms = defaults.snowflake.object_cache.ttl_ms
+    warn("snowflake.object_cache.ttl_ms must be a non-negative number")
+  end
 
   if type(cfg.ui) ~= "table" then
     cfg.ui = vim.deepcopy(defaults.ui)
     warn("invalid ui config; using defaults")
+  end
+  local term = cfg.ui.terminal
+  if type(term) ~= "table" then
+    term = vim.deepcopy(defaults.ui.terminal)
+    cfg.ui.terminal = term
+    warn("ui.terminal must be a table")
+  end
+  if type(term.width) ~= "number" or term.width <= 0 or term.width > 1.0 then
+    term.width = defaults.ui.terminal.width
+    warn("ui.terminal.width must be between 0 and 1")
   end
 
   local valid_modes = { confirm = true, plan = true, bypass = true }
@@ -246,9 +265,9 @@ local function validate(cfg)
     cfg.context = vim.deepcopy(defaults.context)
     warn("invalid context config; using defaults")
   end
-  if type(cfg.context.selection_debounce_ms) ~= "number" then
+  if type(cfg.context.selection_debounce_ms) ~= "number" or cfg.context.selection_debounce_ms < 0 then
     cfg.context.selection_debounce_ms = defaults.context.selection_debounce_ms
-    warn("context.selection_debounce_ms must be a number")
+    warn("context.selection_debounce_ms must be a non-negative number")
   end
 
   if type(cfg.log) ~= "table" then

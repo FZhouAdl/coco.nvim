@@ -28,6 +28,24 @@ describe("config", function()
     config.setup({ transport = { rest = { enabled = "yes" } } })
     assert.is_false(config.get().transport.rest.enabled)
   end)
+
+  it("clamps out-of-range numeric config values", function()
+    config.setup({
+      mcp = { port = 99999, token_bytes = 2, max_body_bytes = -1 },
+      snowflake = { object_cache = { size = -5, ttl_ms = -100 } },
+      ui = { terminal = { width = 1.5 } },
+      cli = { mcp_tool_timeout_ms = 0 },
+      context = { selection_debounce_ms = -1 },
+    })
+    assert.equals(0, config.get().mcp.port)
+    assert.equals(16, config.get().mcp.token_bytes)
+    assert.equals(262144, config.get().mcp.max_body_bytes)
+    assert.equals(32, config.get().snowflake.object_cache.size)
+    assert.equals(300000, config.get().snowflake.object_cache.ttl_ms)
+    assert.equals(0.4, config.get().ui.terminal.width)
+    assert.equals(300000, config.get().cli.mcp_tool_timeout_ms)
+    assert.equals(50, config.get().context.selection_debounce_ms)
+  end)
 end)
 
 describe("placeholders", function()
@@ -58,6 +76,19 @@ describe("placeholders", function()
   it("reports no diagnostics when context diagnostics are empty", function()
     local ctx = { diagnostics = {} }
     assert.equals("fix No diagnostics.", placeholders.expand("fix @diagnostics", ctx))
+  end)
+
+  it("disambiguates @buffers from @buffer", function()
+    local ctx = {
+      buffers = {
+        { filePath = "/tmp/a.lua", modified = false },
+        { filePath = "/tmp/b.lua", modified = true },
+      },
+    }
+    local out = placeholders.expand("open: @buffers", ctx)
+    assert.is_truthy(out:find("/tmp/a.lua"))
+    assert.is_truthy(out:find("/tmp/b.lua"))
+    assert.is_falsy(out:find("@buffer"))
   end)
 end)
 

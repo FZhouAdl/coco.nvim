@@ -16,6 +16,16 @@ jobs:
       - uses: MunifTanjim/setup-neovim-action@v1
         with:
           tag: ${{ matrix.nvim-version }}
+      - uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check lua/ plugin/ tests/
+      - name: Install selene
+        uses: kampfkarren/selene-action@v1.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Lint
+        run: selene lua/ plugin/ tests/
       - name: Run tests
-        run: |
-          make test
+        run: make test

@@ -80,6 +80,7 @@ function M.complete(opts, cb)
     url,
   }, {
     stdin = headers,
+    timeout = 120000,
     stdout = function(_, data)
       if data then
         vim.schedule(function()
@@ -120,9 +121,9 @@ function M._get_account()
   local data = fd:read("*a")
   fd:close()
   local active = auth.config_active_connection() or "default"
-  local account = toml.section_value(data, active, "account")
-  if account and account ~= "" then
-    return account
+  local toml_account = toml.section_value(data, active, "account")
+  if toml_account and toml_account ~= "" then
+    return toml_account
   end
   return nil
 end

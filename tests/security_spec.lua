@@ -111,6 +111,18 @@ describe("security", function()
     assert.is_truthy(err == "filePath contains disallowed traversal" or err:find("outside workspace"))
   end)
 
+  it("rejects file tool paths with URI schemes", function()
+    local path, err = tools._validate_file_path("file:///etc/passwd")
+    assert.is_nil(path)
+    assert.is_not_nil(err)
+    assert.is_truthy(err:find("filesystem path"))
+
+    path, err = tools._validate_file_path("term:///bin/bash")
+    assert.is_nil(path)
+    assert.is_not_nil(err)
+    assert.is_truthy(err:find("filesystem path"))
+  end)
+
   it("never passes the bearer token on curl argv", function()
     local orig_home = vim.env.HOME
     local tmp_home = vim.fn.tempname()

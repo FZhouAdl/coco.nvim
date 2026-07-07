@@ -102,7 +102,7 @@ Example: >
       },
       permissions = {
         mode = "confirm",
-        confirm = { openDiff = false, saveDocument = false },
+        confirm = { openDiff = true, saveDocument = true },
       },
       context = { selection_debounce_ms = 50 },
       log = { level = "info", file = vim.fn.stdpath("cache") .. "/coco.log" },
@@ -121,9 +121,6 @@ when a session is active.
 
 ==============================================================================
 6. MAPPINGS                                                 *coco-mappings*
-
-Default keymaps are opt-in via `setup({ keymaps = true })` (not yet enabled
-by default).
 
 Inside a diff tab (when `ui.diff.keymaps = true`):
   <leader>ca    Accept the diff.

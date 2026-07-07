@@ -28,6 +28,10 @@ local function secure_eq(a, b)
   if type(a) ~= "string" or type(b) ~= "string" or #a ~= #b or #a == 0 then
     return false
   end
+  if not bit_mod then
+    -- Fallback when neither bit nor bit32 is available (should never happen in Neovim).
+    return a == b
+  end
   local diff = 0
   for i = 1, #a do
     diff = bit_mod.bor(diff, bit_mod.bxor(a:byte(i), b:byte(i)))
@@ -356,5 +360,8 @@ end
 function M.is_running()
   return server ~= nil
 end
+
+--- Expose secure_eq for tests.
+M._secure_eq = secure_eq
 
 return M

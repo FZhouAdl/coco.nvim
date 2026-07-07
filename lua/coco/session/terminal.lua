@@ -36,9 +36,16 @@ local function open_native()
   end
   local parts = { config.get().cli.cmd }
   for _, arg in ipairs(config.get().cli.args or {}) do
-    table.insert(parts, vim.fn.fnameescape(arg))
+    table.insert(parts, vim.fn.shellescape(arg))
   end
+  local old_timeout = vim.env.COCO_MCP_TOOL_TIMEOUT_MS
+  vim.env.COCO_MCP_TOOL_TIMEOUT_MS = tostring(config.get().cli.mcp_tool_timeout_ms)
   vim.cmd(split_cmd .. " | terminal " .. table.concat(parts, " "))
+  if old_timeout ~= nil then
+    vim.env.COCO_MCP_TOOL_TIMEOUT_MS = old_timeout
+  else
+    vim.env.COCO_MCP_TOOL_TIMEOUT_MS = nil
+  end
   local bufnr = vim.api.nvim_get_current_buf()
   vim.bo[bufnr].buflisted = false
   return bufnr
@@ -53,7 +60,7 @@ local function open_snacks()
   local cfg = config.get().ui.terminal
   local parts = { config.get().cli.cmd }
   for _, arg in ipairs(config.get().cli.args or {}) do
-    table.insert(parts, arg)
+    table.insert(parts, vim.fn.shellescape(arg))
   end
   local t = Terminal.open({
     cmd = table.concat(parts, " "),

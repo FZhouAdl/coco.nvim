@@ -120,7 +120,8 @@ function M.ask(prompt)
       end
     end)
     -- Some snacks.input variants return the value directly instead of using a callback.
-    if type(ret) == "string" and ret ~= "" then
+    if not handled and type(ret) == "string" and ret ~= "" then
+      handled = true
       submit(ret)
     end
   else

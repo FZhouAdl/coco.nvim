@@ -117,13 +117,33 @@ function M.accept(diff_id)
   if text:sub(-1) ~= "\n" then
     text = text .. "\n"
   end
-  local fd = io.open(view.old_path, "w")
-  if not fd then
-    log.error("diff accept: failed to open " .. view.old_path)
-    return
+  -- Prefer updating an existing buffer so Neovim's buffer system stays in sync.
+  local target_bufnr
+  for _, b in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_get_name(b) == view.old_path then
+      target_bufnr = b
+      break
+    end
   end
-  fd:write(text)
-  fd:close()
+  if target_bufnr and vim.api.nvim_buf_is_valid(target_bufnr) then
+    vim.bo[target_bufnr].modifiable = true
+    vim.api.nvim_buf_set_lines(target_bufnr, 0, -1, false, lines)
+    local ok, err = pcall(vim.api.nvim_buf_call, target_bufnr, function()
+      vim.cmd("write")
+    end)
+    if not ok then
+      log.error("diff accept: failed to write buffer: " .. tostring(err))
+      return
+    end
+  else
+    local fd = io.open(view.old_path, "w")
+    if not fd then
+      log.error("diff accept: failed to open " .. view.old_path)
+      return
+    end
+    fd:write(text)
+    fd:close()
+  end
   state.dispatch({ type = "diff_resolve", id = diff_id, status = "FILE_SAVED" })
   state.dispatch({ type = "counter", name = "diff_accepted_total", delta = 1 })
   M.close(diff_id)

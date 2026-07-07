@@ -30,6 +30,10 @@ function M.setup(opts)
   state.dispatch({ type = "set_mode", mode = config.get().permissions.mode })
   log.info("coco.nvim setup complete")
   require("coco.plugin.commands").register()
+
+  if config.get().cli.auto_start then
+    M.start()
+  end
 end
 
 --- Start a CoCo session.

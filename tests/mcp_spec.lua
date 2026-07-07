@@ -249,6 +249,36 @@ describe("mcp server", function()
     assert.is_nil(parsed.error)
     assert.is_truthy(#parsed.result.tools > 0)
   end)
+
+  it("returns empty body for notifications", function()
+    local started_port
+    handler.reset()
+    server.start({
+      host = "127.0.0.1",
+      port = 0,
+      token = token,
+      handler = handler.handle,
+    }, function(err, port)
+      assert.is_nil(err)
+      started_port = port
+    end)
+    vim.wait(1000, function()
+      return started_port ~= nil
+    end)
+
+    local notify = vim.json.encode({ jsonrpc = "2.0", method = "notifications/initialized" })
+    local code, resp = http_post(started_port, "/mcp", notify, token)
+    assert.equals("200", code)
+    assert.equals("", resp)
+  end)
+
+  it("compares tokens in constant time", function()
+    assert.is_true(server._secure_eq("same", "same"))
+    assert.is_false(server._secure_eq("same", "different"))
+    assert.is_false(server._secure_eq("short", "longerstring"))
+    assert.is_false(server._secure_eq("", ""))
+    assert.is_false(server._secure_eq("a", ""))
+  end)
 end)
 
 describe("tool registry", function()
@@ -310,5 +340,25 @@ describe("tool registry", function()
     assert.is_not_nil(result)
     assert.is_nil(result.isError)
     assert.equals("hello", result.content[1].text)
+  end)
+
+  it("ignores double callbacks from a tool handler", function()
+    tools.register("double", {
+      type = "object",
+      properties = {},
+      additionalProperties = false,
+    }, function(_, cb)
+      cb({ content = { { type = "text", text = "first" } } })
+      cb({ content = { { type = "text", text = "second" } } })
+    end)
+
+    local count = 0
+    local result
+    tools.dispatch({ name = "double", arguments = {} }, function(r)
+      count = count + 1
+      result = r
+    end)
+    assert.equals(1, count)
+    assert.equals("first", result.content[1].text)
   end)
 end)

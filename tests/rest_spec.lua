@@ -1,4 +1,5 @@
 local auth = require("coco.rest.auth")
+local rest = require("coco.rest.client")
 local sse = require("coco.rest.sse")
 local compact = require("coco.context.compact")
 local virt = require("coco.ui.virt")
@@ -55,6 +56,17 @@ describe("rest auth", function()
     fd:write('password = "not-a-pat"\n')
     fd:close()
     assert.is_nil(auth.get_pat())
+  end)
+
+  it("falls back to connections.toml for account", function()
+    vim.env.SNOWFLAKE_ACCOUNT = nil
+    local fd = io.open(tmp_home .. "/.snowflake/connections.toml", "w")
+    fd:write("[connections.myconn]\n")
+    fd:write('account = "tomlaccount"\n')
+    fd:write('token = "secret"\n')
+    fd:close()
+    require("coco.config").setup({ snowflake = { connection = "myconn" } })
+    assert.equals("tomlaccount", rest._get_account())
   end)
 end)
 
