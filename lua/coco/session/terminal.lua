@@ -144,10 +144,12 @@ function M.focus()
     local wins = vim.fn.win_findbuf(bufnr)
     if #wins > 0 then
       vim.api.nvim_set_current_win(wins[1])
+      vim.cmd("startinsert")
       return
     end
     vim.cmd("vertical botright split")
     vim.api.nvim_win_set_buf(0, bufnr)
+    vim.cmd("startinsert")
     return
   end
   M.open()

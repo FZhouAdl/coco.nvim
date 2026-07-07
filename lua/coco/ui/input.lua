@@ -108,6 +108,15 @@ function M.ask(prompt)
     return
   end
 
+  -- Defer submit so the input popup finishes closing and releases focus
+  -- before we switch to the terminal window; otherwise the popup's cleanup
+  -- restores focus to the original window and cancels terminal.focus().
+  local function submit_deferred(value)
+    vim.schedule(function()
+      submit(value)
+    end)
+  end
+
   local ok, snacks = pcall(require, "snacks.input")
   if ok and snacks then
     local handled = false
@@ -116,18 +125,18 @@ function M.ask(prompt)
     }, function(value)
       if not handled and value then
         handled = true
-        submit(value)
+        submit_deferred(value)
       end
     end)
     -- Some snacks.input variants return the value directly instead of using a callback.
     if not handled and type(ret) == "string" and ret ~= "" then
       handled = true
-      submit(ret)
+      submit_deferred(ret)
     end
   else
     vim.ui.input({ prompt = "CoCo: " }, function(value)
       if value then
-        submit(value)
+        submit_deferred(value)
       end
     end)
   end
