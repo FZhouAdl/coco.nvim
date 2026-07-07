@@ -117,6 +117,7 @@ function M.send(text)
   if not text or text == "" then
     return
   end
+  terminal.focus()
   terminal.send(text)
 end
 
