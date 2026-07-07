@@ -146,6 +146,9 @@ function M.focus()
       vim.api.nvim_set_current_win(wins[1])
       return
     end
+    vim.cmd("vertical botright split")
+    vim.api.nvim_win_set_buf(0, bufnr)
+    return
   end
   M.open()
 end
