@@ -58,6 +58,14 @@ describe("rest auth", function()
     assert.is_nil(auth.get_pat())
   end)
 
+  it("reads PAT from cortex mcp.json", function()
+    vim.fn.mkdir(tmp_home .. "/.snowflake/cortex", "p")
+    local fd = io.open(tmp_home .. "/.snowflake/cortex/mcp.json", "w")
+    fd:write([[{"mcpServers":{"test-srv":{"url":"http://127.0.0.1:9999/mcp","type":"http","headers":{"Authorization":"Bearer mcp-json-token"}}}}]])
+    fd:close()
+    assert.equals("mcp-json-token", auth.get_pat())
+  end)
+
   it("falls back to connections.toml for account", function()
     vim.env.SNOWFLAKE_ACCOUNT = nil
     local fd = io.open(tmp_home .. "/.snowflake/connections.toml", "w")
