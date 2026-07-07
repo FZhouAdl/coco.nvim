@@ -62,8 +62,7 @@ local function open_snacks()
   for _, arg in ipairs(config.get().cli.args or {}) do
     table.insert(parts, vim.fn.shellescape(arg))
   end
-  local t = Terminal.open({
-    cmd = table.concat(parts, " "),
+  local t = Terminal.open(table.concat(parts, " "), {
     env = {
       COCO_MCP_TOOL_TIMEOUT_MS = tostring(config.get().cli.mcp_tool_timeout_ms),
     },
