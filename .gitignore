@@ -1,0 +1,4 @@
+.tests/
+*.log
+.styluaignore
+.DS_Store
