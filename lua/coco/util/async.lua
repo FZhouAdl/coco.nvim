@@ -28,10 +28,11 @@ function M.spawn(cmd, opts, cb)
     opts.timeout = 60000
   end
   local safe_cb = function(obj)
-    local ok, err = pcall(cb, obj)
-    if not ok then
-      require("coco.util.log").error("spawn callback error: " .. tostring(err))
-    end
+    -- vim.system callbacks run in a fast-event context; schedule user code
+    -- onto the main loop so it can safely call vimscript functions and APIs.
+    M.schedule(function()
+      cb(obj)
+    end)
   end
   local proc = vim.system(cmd, opts, safe_cb)
   return {

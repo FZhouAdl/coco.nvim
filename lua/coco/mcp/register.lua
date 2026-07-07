@@ -85,7 +85,11 @@ local function probe_port(port, cb)
       timer:close()
     end
     pcall(sock.close, sock)
-    cb(reachable)
+    -- TCP callbacks run in a fast-event context; schedule the result so
+    -- callers can safely use vimscript functions and APIs.
+    async.schedule(function()
+      cb(reachable)
+    end)
   end
   timer:start(1000, 0, function()
     finish(false)
