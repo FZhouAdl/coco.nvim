@@ -19,6 +19,24 @@ local function turn_tokens(turn)
   return estimate_tokens(tostring(content)) + 4 -- role overhead
 end
 
+---@param turn table
+---@param max_tokens number
+---@return table
+local function truncate_turn(turn, max_tokens)
+  local content = turn.content or turn.text or ""
+  if type(content) == "table" then
+    content = vim.inspect(content)
+  end
+  content = tostring(content)
+  -- Reserve 4 tokens for role overhead.
+  local max_chars = math.max(0, (max_tokens - 4) * 4)
+  if #content <= max_chars then
+    return turn
+  end
+  local truncated = content:sub(1, max_chars) .. "\n[truncated]"
+  return { role = turn.role, content = truncated }
+end
+
 --- Summarize older conversation turns while preserving system instructions
 --- and the latest N turns, capped to a token budget.
 ---@param history table[]
@@ -44,7 +62,7 @@ function M.compact(history, budget)
     used = used + turn_tokens(turn)
   end
 
-  -- Always preserve the last 10 turns verbatim, but only if they fit.
+  -- Always preserve the last 10 turns, truncated minimally to fit.
   local keep_latest = 10
   local split = math.max(1, #turns - keep_latest + 1)
   local older = {}
@@ -57,27 +75,28 @@ function M.compact(history, budget)
     end
   end
 
-  -- Drop oldest latest turns until the remainder fits the budget.
-  while #latest > 0 do
-    local latest_tokens = 0
-    for _, turn in ipairs(latest) do
-      latest_tokens = latest_tokens + turn_tokens(turn)
-    end
-    if used + latest_tokens <= budget then
+  local remaining = math.max(0, budget - used)
+  local kept_latest = {}
+  -- Walk newest-to-oldest so the most recent context is preserved first.
+  for i = #latest, 1, -1 do
+    local turn = latest[i]
+    local tokens = turn_tokens(turn)
+    if tokens <= remaining then
+      table.insert(kept_latest, 1, turn)
+      remaining = remaining - tokens
+    else
+      -- The newest remaining turn does not fit; truncate it instead of dropping.
+      local truncated = truncate_turn(turn, remaining)
+      if truncated.content and truncated.content ~= "" then
+        table.insert(kept_latest, 1, truncated)
+      end
+      remaining = 0
       break
     end
-    table.remove(latest, 1)
   end
-
-  local latest_tokens = 0
-  for _, turn in ipairs(latest) do
-    latest_tokens = latest_tokens + turn_tokens(turn)
-  end
-
-  local remaining = math.max(0, budget - used - latest_tokens)
 
   -- Summarize older turns by concatenating and truncating to fit budget.
-  if #older > 0 then
+  if #older > 0 and remaining > 0 then
     local summary_parts = {}
     for _, turn in ipairs(older) do
       local prefix = turn.role == "user" and "User: " or "Assistant: "
@@ -94,8 +113,8 @@ function M.compact(history, budget)
     end
   end
 
-  -- Append latest turns verbatim.
-  for _, turn in ipairs(latest) do
+  -- Append latest turns verbatim (or truncated).
+  for _, turn in ipairs(kept_latest) do
     table.insert(result, turn)
   end
 
