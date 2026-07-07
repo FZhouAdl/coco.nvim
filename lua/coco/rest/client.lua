@@ -4,6 +4,7 @@ local auth = require("coco.rest.auth")
 local sse = require("coco.rest.sse")
 local log = require("coco.util.log")
 local json = require("coco.util.json")
+local toml = require("coco.util.toml")
 
 local M = {}
 
@@ -66,38 +67,42 @@ function M.complete(opts, cb)
   log.debug("rest request to " .. url)
 
   local parser = sse.new()
+  -- Keep the bearer token off the command line by passing headers via stdin.
+  local headers = "Authorization: Bearer " .. pat .. "\nContent-Type: application/json\n"
   local proc = vim.system({
     "curl",
     "-N",
     "-s",
-    "-H",
-    "Authorization: Bearer " .. pat,
-    "-H",
-    "Content-Type: application/json",
+    "--header",
+    "@-",
     "-d",
     body_json,
     url,
   }, {
+    stdin = headers,
     stdout = function(_, data)
       if data then
-        for _, ev in ipairs(parser:feed(data)) do
-          local delta = parse_sse_event(ev)
-          if delta then
-            cb(delta, false, nil)
+        vim.schedule(function()
+          for _, ev in ipairs(parser:feed(data)) do
+            local delta = parse_sse_event(ev)
+            if delta then
+              cb(delta, false, nil)
+            end
           end
-        end
+        end)
       end
     end,
   }, function(obj)
-    if obj.code ~= 0 then
-      cb(nil, true, obj.stderr or "curl failed")
-      return
-    end
-    cb(nil, true, nil)
+    vim.schedule(function()
+      if obj.code ~= 0 then
+        cb(nil, true, obj.stderr or "curl failed")
+        return
+      end
+      cb(nil, true, nil)
+    end)
   end)
 
-  -- Return a cancellation handle via callback metadata is not supported here;
-  -- callers can keep a reference to proc if needed.
+  return proc
 end
 
 ---@return string|nil
@@ -115,17 +120,9 @@ function M._get_account()
   local data = fd:read("*a")
   fd:close()
   local active = auth.config_active_connection() or "default"
-  local in_section = false
-  for line in data:gmatch("[^\r\n]+") do
-    local section = line:match("^%s*%[(.-)%]%s*$")
-    if section then
-      in_section = section == active
-    elseif in_section then
-      local acc = line:match("^%s*account%s*=%s*[\"']?([^\"']+)[\"']?%s*$")
-      if acc and acc ~= "" then
-        return acc
-      end
-    end
+  local account = toml.section_value(data, active, "account")
+  if account and account ~= "" then
+    return account
   end
   return nil
 end

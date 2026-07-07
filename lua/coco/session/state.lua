@@ -110,11 +110,11 @@ local function update(s, msg)
   elseif msg.type == "counter" then
     s.counters[msg.name] = (s.counters[msg.name] or 0) + (msg.delta or 1)
   elseif msg.type == "tool_start" then
-    s.pending_tools[msg.id] = { tool = msg.tool, started = msg.started or os.time() }
+    s.pending_tools[msg.id] = { tool = msg.tool, started = msg.started or math.floor(vim.uv.hrtime() / 1e6) }
   elseif msg.type == "tool_done" then
     s.pending_tools[msg.id] = nil
   elseif msg.type == "diff_open" then
-    s.diffs[msg.id] = { status = "pending", opened = os.time() }
+    s.diffs[msg.id] = { status = "pending", opened = math.floor(vim.uv.hrtime() / 1e6) }
   elseif msg.type == "diff_resolve" then
     if s.diffs[msg.id] then
       s.diffs[msg.id].status = msg.status

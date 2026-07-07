@@ -1,5 +1,6 @@
 local jsonrpc = require("coco.mcp.jsonrpc")
 local server = require("coco.mcp.server")
+local handler = require("coco.mcp.handler")
 local tools = require("coco.mcp.tools")
 local state = require("coco.session.state")
 local async = require("coco.util.async")
@@ -36,6 +37,15 @@ describe("jsonrpc", function()
     assert.equals("parse error", err)
     assert.equals("", tail)
   end)
+
+  it("parses lowercase content-length header", function()
+    local body = "{\"jsonrpc\":\"2.0\"}"
+    local frame = "content-length: " .. tostring(#body) .. "\r\n\r\n" .. body
+    local parsed, tail, err = jsonrpc.read_frame(frame)
+    assert.is_nil(err)
+    assert.is_nil(tail)
+    assert.equals("2.0", parsed.jsonrpc)
+  end)
 end)
 
 describe("mcp server", function()
@@ -51,10 +61,12 @@ describe("mcp server", function()
     server.stop()
   end)
 
-  local function handler(req, cb)
+  local function test_handler(req, cb)
     table.insert(captured, req)
     cb({ jsonrpc = "2.0", id = req.id, result = { echo = req.method } })
   end
+
+  local resp_file = vim.fn.tempname() .. "_coco_test_resp"
 
   local function http_post(port, path, body, auth)
     local done = false
@@ -63,7 +75,7 @@ describe("mcp server", function()
       "curl",
       "-s",
       "-o",
-      "/tmp/coco_test_resp",
+      resp_file,
       "-w",
       "%{http_code}",
       "-X",
@@ -80,7 +92,7 @@ describe("mcp server", function()
     table.insert(cmd, body)
     async.spawn(cmd, { timeout = 3000 }, function(obj)
       code = obj.code == 0 and vim.trim(obj.stdout) or ""
-      local fd = io.open("/tmp/coco_test_resp", "r")
+      local fd = io.open(resp_file, "r")
       resp = fd and fd:read("*a") or ""
       if fd then
         fd:close()
@@ -99,7 +111,7 @@ describe("mcp server", function()
       host = "127.0.0.1",
       port = 0,
       token = token,
-      handler = handler,
+      handler = test_handler,
     }, function(err, port)
       assert.is_nil(err)
       assert.is_number(port)
@@ -122,7 +134,7 @@ describe("mcp server", function()
       host = "127.0.0.1",
       port = 0,
       token = token,
-      handler = handler,
+      handler = test_handler,
     }, function(err, port)
       assert.is_nil(err)
       assert.is_number(port)
@@ -144,7 +156,7 @@ describe("mcp server", function()
       host = "127.0.0.1",
       port = 0,
       token = token,
-      handler = handler,
+      handler = test_handler,
     }, function(err, port)
       assert.is_nil(err)
       assert.is_number(port)
@@ -157,6 +169,85 @@ describe("mcp server", function()
     local body = vim.json.encode({ jsonrpc = "2.0", id = 1, method = "ping" })
     local code, _ = http_post(started_port, "/wrong", body, token)
     assert.equals("404", code)
+  end)
+
+  it("responds with raw JSON (no inner Content-Length framing)", function()
+    local started_port
+    handler.reset()
+    server.start({
+      host = "127.0.0.1",
+      port = 0,
+      token = token,
+      handler = handler.handle,
+    }, function(err, port)
+      assert.is_nil(err)
+      started_port = port
+    end)
+    vim.wait(1000, function()
+      return started_port ~= nil
+    end)
+
+    local init = vim.json.encode({ jsonrpc = "2.0", id = 1, method = "initialize" })
+    local code, resp = http_post(started_port, "/mcp", init, token)
+    assert.equals("200", code)
+    assert.is_falsy(resp:find("Content%-Length"))
+    local parsed = vim.json.decode(resp)
+    assert.equals("coco-nvim", parsed.result.serverInfo.name)
+  end)
+
+  it("rejects tools/list before lifecycle handshake", function()
+    local started_port
+    handler.reset()
+    server.start({
+      host = "127.0.0.1",
+      port = 0,
+      token = token,
+      handler = handler.handle,
+    }, function(err, port)
+      assert.is_nil(err)
+      started_port = port
+    end)
+    vim.wait(1000, function()
+      return started_port ~= nil
+    end)
+
+    local body = vim.json.encode({ jsonrpc = "2.0", id = 2, method = "tools/list" })
+    local code, resp = http_post(started_port, "/mcp", body, token)
+    assert.equals("200", code)
+    local parsed = vim.json.decode(resp)
+    assert.equals(-32002, parsed.error.code)
+  end)
+
+  it("allows tools/list after initialize + notifications/initialized", function()
+    local started_port
+    handler.reset()
+    server.start({
+      host = "127.0.0.1",
+      port = 0,
+      token = token,
+      handler = handler.handle,
+    }, function(err, port)
+      assert.is_nil(err)
+      started_port = port
+    end)
+    vim.wait(1000, function()
+      return started_port ~= nil
+    end)
+
+    local init = vim.json.encode({ jsonrpc = "2.0", id = 1, method = "initialize" })
+    http_post(started_port, "/mcp", init, token)
+
+    local notify = vim.json.encode({ jsonrpc = "2.0", method = "notifications/initialized" })
+    local code2, resp2 = http_post(started_port, "/mcp", notify, token)
+    assert.equals("200", code2)
+    assert.equals("", resp2)
+
+    local body = vim.json.encode({ jsonrpc = "2.0", id = 3, method = "tools/list" })
+    local code, resp = http_post(started_port, "/mcp", body, token)
+    assert.equals("200", code)
+    local parsed = vim.json.decode(resp)
+    assert.is_nil(parsed.error)
+    assert.is_truthy(#parsed.result.tools > 0)
   end)
 end)
 

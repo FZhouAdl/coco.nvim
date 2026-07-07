@@ -13,7 +13,7 @@ local ttl_ms = 600000 -- 10 minutes
 
 ---@return number ms
 local function now_ms()
-  return os.time() * 1000
+  return math.floor(vim.uv.hrtime() / 1e6)
 end
 
 ---@param stdout string
@@ -49,7 +49,9 @@ function M.latest(cb)
     return
   end
 
-  local query = "SELECT SUM(CREDITS_USED) AS CREDITS FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_REST_API_USAGE_HISTORY"
+  -- Filter to the last 24 hours so the value reflects current session usage
+  -- rather than an ever-growing all-time total.
+  local query = "SELECT SUM(CREDITS_USED) AS CREDITS FROM SNOWFLAKE.ACCOUNT_USAGE.CORTEX_REST_API_USAGE_HISTORY WHERE START_TIME >= DATEADD(hour, -24, CURRENT_TIMESTAMP())"
   async.spawn({ "cortex", "sql", "-q", query, "--format", "json" }, { timeout = 60000 }, function(obj)
     if obj.code ~= 0 then
       local err = obj.stderr or "cortex sql failed"

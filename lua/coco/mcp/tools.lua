@@ -193,7 +193,12 @@ function M.dispatch(call, cb)
   call_counter = call_counter + 1
   local call_id = tostring(vim.uv.hrtime()) .. "_" .. tostring(call_counter)
   state.dispatch({ type = "tool_start", id = call_id, tool = call.name, started = os.time() })
+  local finish_called = false
   local function finish(result)
+    if finish_called then
+      return
+    end
+    finish_called = true
     state.dispatch({ type = "tool_done", id = call_id })
     if result and result.isError then
       state.dispatch({ type = "counter", name = "tool_errors_total", delta = 1 })
@@ -205,7 +210,7 @@ function M.dispatch(call, cb)
     state.dispatch({ type = "tool_done", id = call_id })
     state.dispatch({ type = "counter", name = "tool_errors_total", delta = 1 })
     log.error("tool " .. call.name .. " handler error: " .. tostring(herr))
-    cb(err_result("INTERNAL_ERROR", tostring(herr)))
+    finish(err_result("INTERNAL_ERROR", tostring(herr)))
   end
 end
 
@@ -213,6 +218,9 @@ end
 function M.reset()
   registry = {}
 end
+
+--- Expose path validation for tests.
+M._validate_file_path = validate_file_path
 
 -- Built-in tool handlers -----------------------------------------------------
 

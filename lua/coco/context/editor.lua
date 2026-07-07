@@ -37,7 +37,7 @@ function M.selection()
     el = math.max(vstart[2], vend[2])
     sc = math.min(vstart[3], vend[3])
     ec = math.max(vstart[3], vend[3])
-    text = M.get_visual_selection_text()
+    text = M.get_visual_selection_text(sl, sc, el, ec)
   else
     local pos = vim.api.nvim_win_get_cursor(0)
     sl, el = pos[1], pos[1]
@@ -56,19 +56,23 @@ function M.selection()
 end
 
 --- Return the text of the current visual selection.
+--- Optional live positions avoid relying on '< / '> marks, which are stale
+--- while still in visual mode.
+---@param sl number|nil 1-indexed start line
+---@param sc number|nil 1-indexed start column
+---@param el number|nil 1-indexed end line
+---@param ec number|nil 1-indexed end column
 ---@return string
-function M.get_visual_selection_text()
-  local _, ls, cs = unpack(vim.fn.getpos("'<") or { 0, 0, 0 })
-  local _, le, ce = unpack(vim.fn.getpos("'>") or { 0, 0, 0 })
-  if ls == 0 then
+function M.get_visual_selection_text(sl, sc, el, ec)
+  if not sl or not sc or not el or not ec then
+    local _, ls, cs = unpack(vim.fn.getpos("'<") or { 0, 0, 0 })
+    local _, le, ce = unpack(vim.fn.getpos("'>") or { 0, 0, 0 })
+    sl, sc, el, ec = ls, cs, le, ce
+  end
+  if sl == 0 then
     return ""
   end
-  local lines = vim.api.nvim_buf_get_lines(0, ls - 1, le, false)
-  if #lines == 0 then
-    return ""
-  end
-  lines[#lines] = lines[#lines]:sub(1, ce)
-  lines[1] = lines[1]:sub(cs)
+  local lines = vim.api.nvim_buf_get_text(0, sl - 1, sc - 1, el - 1, ec, {})
   return table.concat(lines, "\n")
 end
 

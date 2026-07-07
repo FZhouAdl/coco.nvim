@@ -28,7 +28,7 @@ function M.read_frame(buf)
     return nil, buf, nil
   end
   local headers = buf:sub(1, header_end - 1)
-  local len = headers:match("Content%-Length:%s*(%d+)")
+  local len = headers:lower():match("content%-length:%s*(%d+)")
   if not len then
     return nil, "", "missing Content-Length"
   end

@@ -196,6 +196,8 @@ local function handle_client(client)
         table.remove(auth_failures, 1)
       end
       if #auth_failures >= 5 then
+        -- The server only logs rapid auth failures; it does not block because
+        -- it is localhost-only and a lockout would require persistent state.
         async.schedule(function()
           vim.notify("[coco] repeated MCP auth failures detected", vim.log.levels.WARN)
         end)
@@ -218,7 +220,7 @@ local function handle_client(client)
     -- Dispatch
     local req = jsonrpc.parse(body)
     if not req then
-      local resp_body = jsonrpc.write_frame(
+      local resp_body = vim.json.encode(
         jsonrpc.make_error(nil, jsonrpc.PARSE_ERROR, "parse error")
       )
       client:write(
@@ -231,10 +233,18 @@ local function handle_client(client)
     end
 
     local function send_response(resp)
+      if resp == nil and req.id == nil then
+        -- Notification: send empty HTTP 200 and close.
+        client:write(http_response("200 OK", ""), function()
+          close()
+        end)
+        return
+      end
       if resp == nil then
         resp = jsonrpc.make_error(req.id, jsonrpc.METHOD_NOT_FOUND, "method not found")
       end
-      local resp_body = jsonrpc.write_frame(resp)
+      -- HTTP already carries Content-Length; do not add JSON-RPC framing inside the body.
+      local resp_body = vim.json.encode(resp)
       client:write(
         http_response("200 OK", resp_body, { ["X-Coco-Trace"] = trace }),
         function()
@@ -334,6 +344,7 @@ function M.stop()
   end
   clients = {}
   client_count = 0
+  auth_failures = {}
   if server then
     pcall(server.close, server)
     server = nil

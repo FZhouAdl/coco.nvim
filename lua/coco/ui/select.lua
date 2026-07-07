@@ -18,6 +18,15 @@ function M.pick(items, opts, cb)
     }, cb)
     return
   end
+  -- Some snacks setups expose the picker only via the global Snacks object.
+  local Snacks = rawget(_G, "Snacks")
+  if Snacks and Snacks.picker and Snacks.picker.select then
+    Snacks.picker.select(items, {
+      prompt = opts.prompt or "Select: ",
+      format_item = opts.format or tostring,
+    }, cb)
+    return
+  end
   vim.ui.select(items, {
     prompt = opts.prompt or "Select: ",
     format_item = opts.format or tostring,
@@ -30,6 +39,10 @@ end
 
 ---@param cb fun(err: string|nil, models: CocoModel[])
 function M.models(cb)
+  if vim.fn.executable("cortex") == 0 then
+    cb("cortex not found on PATH", {})
+    return
+  end
   async.spawn({ "cortex", "models", "list", "--json" }, { timeout = 30000 }, function(obj)
     if obj.code ~= 0 then
       -- Fallback to plain text.

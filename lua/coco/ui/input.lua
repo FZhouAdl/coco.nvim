@@ -30,8 +30,22 @@ local function rest_ask(prompt)
   float.open({ bufnr = bufnr })
 
   local current_line = ""
+  local proc ---@type vim.SystemObj|nil
 
-  rest.complete({ messages = build_messages(prompt), stream = true }, function(chunk, done, err)
+  local function cleanup()
+    if proc and proc.kill then
+      pcall(proc.kill, proc, "term")
+    end
+    proc = nil
+  end
+
+  vim.api.nvim_create_autocmd({ "WinClosed", "BufWipeout" }, {
+    buffer = bufnr,
+    once = true,
+    callback = cleanup,
+  })
+
+  proc = rest.complete({ messages = build_messages(prompt), stream = true }, function(chunk, done, err)
     if err then
       vim.schedule(function()
         vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, { "", "Error: " .. err })
@@ -95,14 +109,20 @@ function M.ask(prompt)
   end
 
   local ok, snacks = pcall(require, "snacks.input")
-  if ok then
-    snacks.input({
+  if ok and snacks then
+    local handled = false
+    local ret = snacks.input({
       prompt = "CoCo: ",
     }, function(value)
-      if value then
+      if not handled and value then
+        handled = true
         submit(value)
       end
     end)
+    -- Some snacks.input variants return the value directly instead of using a callback.
+    if type(ret) == "string" and ret ~= "" then
+      submit(ret)
+    end
   else
     vim.ui.input({ prompt = "CoCo: " }, function(value)
       if value then
@@ -122,7 +142,7 @@ function M.complete()
 
   virt.start_completion("…")
   local completion_parts = {}
-  rest.complete({ messages = build_messages(prompt), stream = true }, function(chunk, done, err)
+  local proc = rest.complete({ messages = build_messages(prompt), stream = true }, function(chunk, done, err)
     if done or err then
       return
     end
@@ -133,6 +153,8 @@ function M.complete()
       end)
     end
   end)
+  -- Store the process handle so a new completion cancels the previous stream.
+  virt._set_completion_proc(proc)
 end
 
 return M

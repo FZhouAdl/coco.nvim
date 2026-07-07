@@ -113,6 +113,10 @@ function M.accept(diff_id)
   end
   local lines = vim.api.nvim_buf_get_lines(view.new_bufnr, 0, -1, false)
   local text = table.concat(lines, "\n")
+  -- Preserve POSIX trailing newline if the buffer content lacks one.
+  if text:sub(-1) ~= "\n" then
+    text = text .. "\n"
+  end
   local fd = io.open(view.old_path, "w")
   if not fd then
     log.error("diff accept: failed to open " .. view.old_path)

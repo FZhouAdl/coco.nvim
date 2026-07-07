@@ -86,10 +86,11 @@ function M.expand(prompt, ctx)
     return token .. tail
   end)
 
-  -- @object:<NAME> — synchronous object context lookup.
+  -- @object:<NAME> — synchronous object context lookup with a short timeout
+  -- so Neovim does not freeze on a cold cache miss.
   prompt = prompt:gsub("@object:([^%s]+)", function(name)
     local result
-    snowflake.lookup_sync(name, 30000, function(err, res)
+    snowflake.lookup_sync(name, 5000, function(err, res)
       if err then
         result = "[object lookup failed: " .. err .. "]"
       elseif res and res.pending then

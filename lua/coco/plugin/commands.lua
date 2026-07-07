@@ -4,8 +4,11 @@ local api = require("coco")
 
 local M = {}
 
+---@type table<string, fun(args: table)>
+local handlers = {}
+
 function M.register()
-  vim.api.nvim_create_user_command("CocoStart", function(args)
+  handlers.CocoStart = function(args)
     local opts = {}
     for _, arg in ipairs(vim.split(args.args, "%s+", { trimempty = true })) do
       if arg == "--resume" or arg == "--continue" then
@@ -13,81 +16,98 @@ function M.register()
       end
     end
     api.start(opts)
-  end, { nargs = "*", desc = "Start a CoCo session" })
+  end
 
-  vim.api.nvim_create_user_command("CocoStop", function()
+  handlers.CocoStop = function(_)
     api.stop()
-  end, { desc = "Stop the CoCo session" })
+  end
 
-  vim.api.nvim_create_user_command("Coco", function()
+  handlers.Coco = function(_)
     api.toggle()
-  end, { desc = "Toggle the CoCo terminal" })
+  end
 
-  vim.api.nvim_create_user_command("CocoFocus", function()
+  handlers.CocoFocus = function(_)
     api.focus()
-  end, { desc = "Focus the CoCo terminal" })
+  end
 
-  vim.api.nvim_create_user_command("CocoAsk", function(args)
+  handlers.CocoAsk = function(args)
     api.ask(args.args ~= "" and args.args or nil)
-  end, { nargs = "?", desc = "Ask CoCo (with placeholder expansion)" })
+  end
 
-  vim.api.nvim_create_user_command("CocoSend", function(args)
+  handlers.CocoSend = function(args)
     api.send(args.args)
-  end, { nargs = "?", desc = "Send text to CoCo" })
+  end
 
-  vim.api.nvim_create_user_command("CocoAdd", function(args)
+  handlers.CocoAdd = function(args)
     local parts = vim.split(args.args, "%s+", { trimempty = true })
     local path = parts[1]
     local l1 = tonumber(parts[2])
     local l2 = tonumber(parts[3])
     api.add(path, l1, l2)
-  end, { nargs = "?", desc = "Add file/range to context" })
+  end
 
-  vim.api.nvim_create_user_command("CocoConnection", function()
+  handlers.CocoConnection = function(_)
     api.connection()
-  end, { desc = "Switch Snowflake connection" })
+  end
 
-  vim.api.nvim_create_user_command("CocoSelectModel", function()
+  handlers.CocoSelectModel = function(_)
     api.select_model()
-  end, { desc = "Select CoCo model" })
+  end
 
-  vim.api.nvim_create_user_command("CocoMode", function(args)
+  handlers.CocoMode = function(args)
     api.mode(args.args ~= "" and args.args or nil)
-  end, { nargs = "?", desc = "Cycle/set CoCo permission mode" })
+  end
 
-  vim.api.nvim_create_user_command("CocoComplete", function()
+  handlers.CocoComplete = function(_)
     api.complete()
-  end, { desc = "Trigger CoCo ghost-text completion" })
+  end
 
-  vim.api.nvim_create_user_command("CocoStatus", function()
+  handlers.CocoStatus = function(_)
     api.status()
-  end, { desc = "Show CoCo session status" })
+  end
 
-  vim.api.nvim_create_user_command("CocoHealth", function()
+  handlers.CocoHealth = function(_)
     vim.cmd("checkhealth coco")
-  end, { desc = "Run :checkhealth coco" })
+  end
 
-  vim.api.nvim_create_user_command("CocoDiffAccept", function()
+  handlers.CocoDiffAccept = function(_)
     local ok, id = pcall(vim.api.nvim_buf_get_var, 0, "coco_diff_id")
     if ok and id then
       require("coco.ui.diff").accept(id)
     else
       vim.notify("[coco] no diff in current buffer", vim.log.levels.WARN)
     end
-  end, { desc = "Accept the current CoCo diff" })
+  end
 
-  vim.api.nvim_create_user_command("CocoDiffDeny", function()
+  handlers.CocoDiffDeny = function(_)
     local ok, id = pcall(vim.api.nvim_buf_get_var, 0, "coco_diff_id")
     if ok and id then
       require("coco.ui.diff").deny(id)
     else
       vim.notify("[coco] no diff in current buffer", vim.log.levels.WARN)
     end
-  end, { desc = "Deny the current CoCo diff" })
+  end
 
-  vim.api.nvim_create_user_command("CocoCloseAllDiffs", function()
+  handlers.CocoCloseAllDiffs = function(_)
     require("coco.ui.diff").close_all()
-  end, { desc = "Close all CoCo diff tabs" })
+  end
+
+  for name, handler in pairs(handlers) do
+    vim.api.nvim_create_user_command(name, handler, {
+      nargs = name == "CocoStart" and "*" or (name == "CocoAsk" or name == "CocoSend" or name == "CocoAdd" or name == "CocoMode") and "?" or 0,
+      desc = "CoCo command",
+    })
+  end
+end
+
+--- Invoke a registered command handler directly (used by lazy stubs).
+---@param name string
+---@param args table
+function M.run(name, args)
+  local handler = handlers[name]
+  if handler then
+    handler(args)
+  end
 end
 
 return M

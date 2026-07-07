@@ -95,6 +95,10 @@ end
 
 ---@param cb fun(err: string|nil, connections: CocoConnection[])
 function M.list(cb)
+  if vim.fn.executable("cortex") == 0 then
+    cb("cortex not found on PATH", {})
+    return
+  end
   async.spawn({ "cortex", "connections", "list", "--json" }, { timeout = 30000 }, function(obj)
     if obj.code ~= 0 then
       -- Fallback to plain text.

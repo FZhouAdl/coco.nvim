@@ -103,6 +103,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README overhaul with full config table, statusline, placeholders, and
   examples.
 
+### Fixed
+- REST streaming callbacks are now scheduled on the main loop to avoid crashes.
+- REST client keeps the bearer token off `curl` argv and returns the process
+  handle for cancellation.
+- Visual selection now uses live cursor positions instead of stale `'<`/`'>` marks.
+- Multi-line ghost-text completion inserts correctly.
+- Terminal close no longer double-dispatches the `stopped` state.
+- `Coco` toggle reopens the terminal in a split instead of replacing the current buffer.
+- MCP token file (`~/.snowflake/cortex/mcp.json`) is written with `0600` permissions.
+- MCP auth failure history is reset when the server stops.
+- MCP HTTP responses no longer double-frame JSON-RPC `Content-Length` headers.
+- MCP handler enforces `initialize` + `notifications/initialized` lifecycle and
+  implements `ping`.
+- JSON-RPC `Content-Length` parsing is now case-insensitive.
+- Tool dispatch guards against double callbacks.
+- Cache TTLs and pending-tool timestamps use monotonic `vim.uv.hrtime()`.
+- TOML section parsing is shared and handles `[connections.X]` headers.
+- CLI pickers pre-check `cortex` executable to avoid double timeouts.
+- `@object:<NAME>` placeholder lookup uses a shorter timeout.
+- Lazy command stubs invoke handlers directly instead of re-parsing args with `vim.cmd`.
+- SSE parser caps buffer growth at 1 MiB.
+- Float windows can be closed with `q` / `<Esc>`.
+- Diff accept preserves POSIX trailing newline.
+- Snacks picker compatibility falls back to the global `Snacks.picker` object.
+- Cost query filters to the last 24 hours.
+
+### Security
+- Bearer tokens are no longer visible in `ps`/`/proc/<pid>/cmdline` during REST requests.
+- Added tests covering MCP token-file permissions, file-tool path traversal
+  rejection, `password=` rejection in `connections.toml`, and bearer-token argv
+  safety.
+
 ### Notes
 - All five phases from `docs/coco-nvim-plan.md` are now implemented.
 - The implementation follows `docs/coco-nvim-plan.md` and

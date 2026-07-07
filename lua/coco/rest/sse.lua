@@ -11,14 +11,24 @@ local M = {}
 local Parser = {}
 Parser.__index = Parser
 
+local MAX_BUFFER = 1024 * 1024 -- 1 MiB cap to avoid unbounded growth.
+
 function M.new()
-  return setmetatable({ buffer = "", last_id = nil }, Parser)
+  return setmetatable({ buffer = "", last_id = nil, error = nil }, Parser)
 end
 
 ---@param chunk string
 ---@return CocoSseEvent[] events
 function Parser:feed(chunk)
+  if self.error then
+    return {}
+  end
   self.buffer = self.buffer .. chunk
+  if #self.buffer > MAX_BUFFER then
+    self.error = "SSE buffer exceeded maximum size"
+    self.buffer = ""
+    return {}
+  end
   local events = {}
   while true do
     local eol_pos = self.buffer:find("\n", 1, true)

@@ -82,6 +82,10 @@ function M.open()
       buffer = bufnr,
       once = true,
       callback = function()
+        -- If the manager is already stopping the session, do not dispatch again.
+        if state.get().phase == "stopping" then
+          return
+        end
         log.warn("terminal closed unexpectedly")
         state.dispatch({ type = "stopped" })
       end,
@@ -96,7 +100,8 @@ function M.close()
   if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
     vim.api.nvim_buf_delete(bufnr, { force = true })
   end
-  state.dispatch({ type = "stopped" })
+  -- The caller (session manager or TermClose autocmd) is responsible for
+  -- dispatching the "stopped" message to avoid double-dispatch.
 end
 
 --- Toggle the CoCo terminal window.
@@ -112,7 +117,10 @@ function M.toggle()
         end
       end
     else
-      vim.api.nvim_set_current_buf(bufnr)
+      -- Re-open the existing terminal buffer in a vertical split rather than
+      -- replacing the current buffer.
+      vim.cmd("vertical botright split")
+      vim.api.nvim_win_set_buf(0, bufnr)
     end
   else
     M.open()

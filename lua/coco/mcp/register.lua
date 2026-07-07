@@ -29,19 +29,24 @@ local function read_mcp_json()
   return parsed
 end
 
---- Write the cortex mcp.json file atomically.
+--- Write the cortex mcp.json file atomically with restrictive permissions.
 ---@param cfg table
 local function write_mcp_json(cfg)
   local path = mcp_json_path()
   local tmp = path .. ".tmp"
   local dir = vim.fn.fnamemodify(path, ":h")
   vim.fn.mkdir(dir, "p")
-  local fd = io.open(tmp, "w")
+  local fd, open_err = vim.uv.fs_open(tmp, "w", tonumber("600", 8))
   if not fd then
-    error("failed to open " .. tmp .. " for writing")
+    error("failed to open " .. tmp .. " for writing: " .. tostring(open_err))
   end
-  fd:write(json.encode(cfg))
-  fd:close()
+  local data = json.encode(cfg)
+  local written, write_err = vim.uv.fs_write(fd, data)
+  if not written then
+    vim.uv.fs_close(fd)
+    error("failed to write " .. tmp .. ": " .. tostring(write_err))
+  end
+  vim.uv.fs_close(fd)
   local ok, err = os.rename(tmp, path)
   if not ok then
     error("failed to rename " .. tmp .. " to " .. path .. ": " .. tostring(err))

@@ -142,8 +142,9 @@ function M.status()
     table.insert(lines, "  credits:    ~" .. string.format("%.1f", s.credits))
   end
   local pending = {}
+  local now_ms = math.floor(vim.uv.hrtime() / 1e6)
   for id, info in pairs(s.pending_tools) do
-    table.insert(pending, string.format("%s (%ds)", info.tool, os.time() - info.started))
+    table.insert(pending, string.format("%s (%ds)", info.tool, math.floor((now_ms - info.started) / 1000)))
   end
   if #pending > 0 then
     table.insert(lines, "  in-flight:  " .. table.concat(pending, ", "))

@@ -30,12 +30,9 @@ local command_specs = {
 
 local function lazy_register(name)
   return function(opts)
-    require("coco.plugin.commands").register()
-    if opts.args and opts.args ~= "" then
-      vim.cmd(name .. " " .. opts.args)
-    else
-      vim.cmd(name)
-    end
+    local commands = require("coco.plugin.commands")
+    commands.register()
+    commands.run(name, opts)
   end
 end
 

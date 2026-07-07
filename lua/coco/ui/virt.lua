@@ -4,6 +4,7 @@ local M = {}
 
 local ns = vim.api.nvim_create_namespace("coco.nvim")
 local current_completion = nil ---@type { bufnr: number, line: number, extmark: number, text: string }|nil
+local current_proc = nil ---@type vim.SystemObj|nil
 
 ---@param bufnr number
 ---@param line number
@@ -76,18 +77,34 @@ function M.accept_completion()
     return
   end
   local col = #lines[1]
-  vim.api.nvim_buf_set_text(bufnr, row, col, row, col, { text })
+  local new_lines = vim.split(text, "\n", { plain = true })
+  vim.api.nvim_buf_set_text(bufnr, row, col, row, col, new_lines)
   M.cancel_completion()
 end
 
 --- Cancel and clear the current completion.
 function M.cancel_completion()
+  M._cancel_completion_proc()
   if current_completion then
     if vim.api.nvim_buf_is_valid(current_completion.bufnr) then
       vim.api.nvim_buf_del_extmark(current_completion.bufnr, ns, current_completion.extmark)
     end
     current_completion = nil
   end
+end
+
+--- Attach the in-flight REST process for cancellation.
+---@param proc vim.SystemObj|nil
+function M._set_completion_proc(proc)
+  current_proc = proc
+end
+
+--- Kill the in-flight completion process, if any.
+function M._cancel_completion_proc()
+  if current_proc and current_proc.kill then
+    pcall(current_proc.kill, current_proc, "term")
+  end
+  current_proc = nil
 end
 
 ---@return { bufnr: number, text: string }|nil

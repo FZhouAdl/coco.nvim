@@ -129,6 +129,10 @@ Inside a diff tab (when `ui.diff.keymaps = true`):
   <leader>ca    Accept the diff.
   <leader>cx    Deny the diff.
 
+Inside a CoCo float window (e.g. `:CocoAsk` REST output):
+  q             Close the float.
+  <Esc>         Close the float.
+
 Standard diff navigation (`]c`, `[c`, `dp`, `do`) works as usual.
 
 ==============================================================================
