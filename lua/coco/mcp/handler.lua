@@ -33,7 +33,9 @@ function M.handle(req, cb)
     cb(
       jsonrpc.make_response(req.id, {
         protocolVersion = "2024-11-05",
-        capabilities = { tools = {}, logging = {} },
+        -- Empty Lua tables encode as JSON arrays; use vim.empty_dict() for
+        -- MCP capability objects that must be objects, not arrays.
+        capabilities = { tools = vim.empty_dict(), logging = vim.empty_dict() },
         serverInfo = { name = "coco-nvim", version = "0.2.0" },
       })
     )
@@ -50,7 +52,7 @@ function M.handle(req, cb)
   -- Ping is a required base method and needs no initialization.
   if method == "ping" then
     if req.id ~= nil then
-      cb(jsonrpc.make_response(req.id, {}))
+      cb(jsonrpc.make_response(req.id, vim.empty_dict()))
     else
       cb(nil)
     end

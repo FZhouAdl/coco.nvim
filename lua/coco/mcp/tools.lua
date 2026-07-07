@@ -226,7 +226,7 @@ M._validate_file_path = validate_file_path
 
 M.register("getCurrentSelection", {
   type = "object",
-  properties = {},
+  properties = vim.empty_dict(),
   additionalProperties = false,
 }, function(_, cb)
   async.schedule(function()
@@ -236,7 +236,7 @@ end)
 
 M.register("getLatestSelection", {
   type = "object",
-  properties = {},
+  properties = vim.empty_dict(),
   additionalProperties = false,
 }, function(_, cb)
   async.schedule(function()
@@ -246,7 +246,7 @@ end)
 
 M.register("getOpenEditors", {
   type = "object",
-  properties = {},
+  properties = vim.empty_dict(),
   additionalProperties = false,
 }, function(_, cb)
   async.schedule(function()
@@ -256,7 +256,7 @@ end)
 
 M.register("getWorkspaceInfo", {
   type = "object",
-  properties = {},
+  properties = vim.empty_dict(),
   additionalProperties = false,
 }, function(_, cb)
   async.schedule(function()
@@ -358,7 +358,7 @@ end)
 
 M.register("closeAllDiffTabs", {
   type = "object",
-  properties = {},
+  properties = vim.empty_dict(),
   additionalProperties = false,
 }, function(_, cb)
   async.schedule(function()
