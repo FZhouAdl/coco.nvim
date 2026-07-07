@@ -1,6 +1,7 @@
 --- coco.nvim statusline component.
 
 local state = require("coco.session.state")
+local config = require("coco.config")
 
 local M = {}
 
@@ -23,6 +24,9 @@ function M.component()
   end
   if s.model then
     table.insert(parts, s.model)
+  end
+  if config.get().snowflake.show_cost and s.credits then
+    table.insert(parts, string.format("~%.1f", s.credits))
   end
   return table.concat(parts, " · ")
 end

@@ -268,20 +268,36 @@ M.register("saveDocument", {
   additionalProperties = false,
 }, function(args, cb)
   async.schedule(function()
-    local saved = false
-    for _, b in ipairs(vim.api.nvim_list_bufs()) do
-      if vim.api.nvim_buf_get_name(b) == args.filePath then
-        local ok, err = pcall(vim.api.nvim_buf_call, b, function()
-          vim.cmd("write")
-        end)
-        saved = ok
-        if not ok then
-          log.warn("saveDocument failed: " .. tostring(err))
+    local function do_save()
+      local saved = false
+      for _, b in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_get_name(b) == args.filePath then
+          local ok, err = pcall(vim.api.nvim_buf_call, b, function()
+            vim.cmd("write")
+          end)
+          saved = ok
+          if not ok then
+            log.warn("saveDocument failed: " .. tostring(err))
+          end
+          break
         end
-        break
       end
+      cb(ok_result({ filePath = args.filePath, saved = saved }))
     end
-    cb(ok_result({ filePath = args.filePath, saved = saved }))
+
+    if require("coco.config").get().permissions.confirm.saveDocument then
+      vim.ui.select({ "Yes", "No" }, {
+        prompt = "CoCo wants to save " .. args.filePath .. ": ",
+      }, function(choice)
+        if choice == "Yes" then
+          do_save()
+        else
+          cb(err_result("USER_DENIED", "save denied by user"))
+        end
+      end)
+      return
+    end
+    do_save()
   end)
 end)
 
@@ -364,17 +380,33 @@ M.register("openDiff", {
   additionalProperties = false,
 }, function(args, cb)
   async.schedule(function()
-    local diffs = state.get().diffs
-    if diffs[args.oldPath] and diffs[args.oldPath].status == "pending" then
-      cb(err_result(DIFF_IN_FLIGHT, "diff already in flight for " .. args.oldPath))
+    local function do_open()
+      local diffs = state.get().diffs
+      if diffs[args.oldPath] and diffs[args.oldPath].status == "pending" then
+        cb(err_result(DIFF_IN_FLIGHT, "diff already in flight for " .. args.oldPath))
+        return
+      end
+      local id = diff_ui.open(args.oldPath, args.newPath, args.newContents, args.tabName)
+      if id == "" then
+        cb(err_result("DIFF_OPEN_FAILED", "failed to open diff"))
+        return
+      end
+      cb(ok_result({ diffId = args.oldPath, status = "pending" }))
+    end
+
+    if require("coco.config").get().permissions.confirm.openDiff then
+      vim.ui.select({ "Yes", "No" }, {
+        prompt = "CoCo wants to open a diff for " .. args.oldPath .. ": ",
+      }, function(choice)
+        if choice == "Yes" then
+          do_open()
+        else
+          cb(err_result("USER_DENIED", "diff denied by user"))
+        end
+      end)
       return
     end
-    local id = diff_ui.open(args.oldPath, args.newPath, args.newContents, args.tabName)
-    if id == "" then
-      cb(err_result("DIFF_OPEN_FAILED", "failed to open diff"))
-      return
-    end
-    cb(ok_result({ diffId = args.oldPath, status = "pending" }))
+    do_open()
   end)
 end)
 

@@ -1,6 +1,7 @@
 --- coco.nvim placeholder expansion.
 
 local editor = require("coco.context.editor")
+local snowflake = require("coco.context.snowflake")
 
 local M = {}
 
@@ -54,7 +55,28 @@ function M.expand(prompt, ctx)
     return table.concat(parts, "\n")
   end)
 
-  -- @object:<NAME> — Phase 3 will wire lookup; for now leave token intact.
+  -- @object:<NAME>
+  prompt = prompt:gsub("@object:([^%s]+)", function(name)
+    local done = false
+    local result
+    snowflake.lookup(name, function(err, res)
+      if err then
+        result = "[object lookup failed: " .. err .. "]"
+      elseif res and res.pending then
+        result = "[object " .. name .. " lookup pending; retry shortly]"
+      elseif type(res) == "table" then
+        local ok2, encoded = pcall(vim.json.encode, res)
+        result = ok2 and encoded or tostring(res)
+      else
+        result = tostring(res or "")
+      end
+      done = true
+    end)
+    vim.wait(2000, function()
+      return done
+    end, 10)
+    return result or "[object " .. name .. " lookup timeout]"
+  end)
 
   -- @marks, @quickfix, @visible — minimal stubs.
   prompt = prompt:gsub("@marks", function()

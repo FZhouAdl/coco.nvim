@@ -60,6 +60,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Component tests (`tests/mcp_spec.lua`, `tests/diff_spec.lua`) covering
   JSON-RPC framing, server auth/routing, tool schema validation, and diff
   accept/reject.
+- Phase 3 "Snowflake Context" implementation.
+- Snowflake connection manager (`lua/coco/snowflake/connection.lua`) with
+  `cortex connections list/set` parsing and `:CocoConnection` picker.
+- Snowflake object metadata lookup (`lua/coco/context/snowflake.lua`) with
+  LRU cache, TTL eviction, 50 KB cap handling, and `@object:<NAME>` placeholder
+  expansion.
+- Cost feedback (`lua/coco/snowflake/cost.lua`) querying
+  `CORTEX_REST_API_USAGE_HISTORY` with 10-minute caching and `~<credits>`
+  statusline segment.
+- Model picker (`:CocoSelectModel`) and permission mode cycling (`:CocoMode`)
+  with optional `vim.ui.select` gates on `openDiff` / `saveDocument`.
+- State now tracks connection, role, warehouse, model, credits, and mode.
+- Phase 3 tests (`tests/snowflake_spec.lua`) for connection parsing, object
+  lookup cache/TTL, cost caching, statusline credits, and `@object:` expansion.
 
 ### Notes
 - Snowflake metadata, REST/SSE, and inline UI remain stubbed and will be

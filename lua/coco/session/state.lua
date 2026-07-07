@@ -13,6 +13,8 @@ local M = {}
 ---@field role string|nil
 ---@field warehouse string|nil
 ---@field model string|nil
+---@field credits number|nil
+---@field mode "confirm"|"plan"|"bypass"|nil
 ---@field terminal_bufnr number|nil
 ---@field mcp_port number|nil
 ---@field mcp_token string|nil
@@ -28,6 +30,8 @@ local state = {
   role = nil,
   warehouse = nil,
   model = nil,
+  credits = nil,
+  mode = nil,
   terminal_bufnr = nil,
   mcp_port = nil,
   mcp_token = nil,
@@ -90,6 +94,7 @@ local function update(s, msg)
     s.mcp_token = nil
     s.pending_tools = {}
     s.diffs = {}
+    s.credits = nil
   elseif msg.type == "set_terminal_bufnr" then
     s.terminal_bufnr = msg.bufnr
   elseif msg.type == "set_connection" then
@@ -98,6 +103,10 @@ local function update(s, msg)
     s.warehouse = msg.warehouse
   elseif msg.type == "set_model" then
     s.model = msg.model
+  elseif msg.type == "set_credits" then
+    s.credits = msg.credits
+  elseif msg.type == "set_mode" then
+    s.mode = msg.mode
   elseif msg.type == "counter" then
     s.counters[msg.name] = (s.counters[msg.name] or 0) + (msg.delta or 1)
   elseif msg.type == "tool_start" then

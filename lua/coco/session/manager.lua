@@ -155,6 +155,9 @@ function M.status()
   if s.mcp_port then
     table.insert(lines, "  mcp port:   " .. s.mcp_port)
   end
+  if s.credits then
+    table.insert(lines, "  credits:    ~" .. string.format("%.1f", s.credits))
+  end
   local pending = {}
   for id, info in pairs(s.pending_tools) do
     table.insert(pending, string.format("%s (%ds)", info.tool, os.time() - info.started))

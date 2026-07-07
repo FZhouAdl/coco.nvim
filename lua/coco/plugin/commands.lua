@@ -43,6 +43,18 @@ function M.register()
     api.add(path, l1, l2)
   end, { nargs = "?", desc = "Add file/range to context" })
 
+  vim.api.nvim_create_user_command("CocoConnection", function()
+    api.connection()
+  end, { desc = "Switch Snowflake connection" })
+
+  vim.api.nvim_create_user_command("CocoSelectModel", function()
+    api.select_model()
+  end, { desc = "Select CoCo model" })
+
+  vim.api.nvim_create_user_command("CocoMode", function(args)
+    api.mode(args.args ~= "" and args.args or nil)
+  end, { nargs = "?", desc = "Cycle/set CoCo permission mode" })
+
   vim.api.nvim_create_user_command("CocoStatus", function()
     api.status()
   end, { desc = "Show CoCo session status" })
