@@ -111,14 +111,18 @@ function M.stop()
   end)
 end
 
---- Send text to the terminal.
+--- Send text to the terminal, focusing its window first.
 ---@param text string|nil
 function M.send(text)
   if not text or text == "" then
     return
   end
   terminal.focus()
-  terminal.send(text)
+  -- Send after focus/startinsert takes effect so the terminal is in the
+  -- correct mode and Neovim redraws the sent text.
+  vim.schedule(function()
+    terminal.send(text)
+  end)
 end
 
 --- Print session status.

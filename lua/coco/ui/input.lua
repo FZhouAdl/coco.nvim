@@ -103,18 +103,18 @@ function M.ask(prompt)
     end
   end
 
-  if prompt ~= "" then
-    submit(prompt)
-    return
-  end
-
-  -- Defer submit so the input popup finishes closing and releases focus
-  -- before we switch to the terminal window; otherwise the popup's cleanup
-  -- restores focus to the original window and cancels terminal.focus().
+  -- Defer submit so it runs after the current command/popup finishes.
+  -- Without this, terminal.focus() and startinsert are undone by Neovim's
+  -- command context cleanup or the input popup restoring the previous window.
   local function submit_deferred(value)
     vim.schedule(function()
       submit(value)
     end)
+  end
+
+  if prompt ~= "" then
+    submit_deferred(prompt)
+    return
   end
 
   local ok, snacks = pcall(require, "snacks.input")
