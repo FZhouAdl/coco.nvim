@@ -8,6 +8,23 @@ local toml = require("coco.util.toml")
 
 local M = {}
 
+---@return string|nil
+local function active_connection_name()
+  local home = vim.env.HOME or ""
+  local settings_path = home .. "/.snowflake/cortex/settings.json"
+  local fd = io.open(settings_path, "r")
+  if not fd then
+    return nil
+  end
+  local raw = fd:read("*a")
+  fd:close()
+  local ok, data = json.decode(raw)
+  if ok and data and data.cortexAgentConnectionName then
+    return data.cortexAgentConnectionName
+  end
+  return nil
+end
+
 ---@param ev table
 ---@return table|nil
 local function parse_sse_event(ev)
@@ -112,20 +129,22 @@ function M._get_account()
   if account and account ~= "" then
     return account
   end
-  -- Try to read from connections.toml.
   local home = vim.env.HOME or ""
-  local fd = io.open(home .. "/.snowflake/connections.toml", "r")
-  if not fd then
-    return nil
+  local conn_name = active_connection_name() or auth.config_active_connection() or "default"
+
+  local function try_toml(path)
+    local fd = io.open(path, "r")
+    if not fd then
+      return nil
+    end
+    local data = fd:read("*a")
+    fd:close()
+    return toml.section_value(data, conn_name, "account")
   end
-  local data = fd:read("*a")
-  fd:close()
-  local active = auth.config_active_connection() or "default"
-  local toml_account = toml.section_value(data, active, "account")
-  if toml_account and toml_account ~= "" then
-    return toml_account
-  end
-  return nil
+
+  return try_toml(home .. "/.snowflake/connections.toml")
+    or try_toml(home .. "/.snowflake/config.toml")
+    or nil
 end
 
 return M
