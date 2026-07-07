@@ -89,12 +89,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instructions + latest 10 turns within a token budget.
 - Phase 4 tests (`tests/rest_spec.lua`) for auth, SSE parsing, compaction, and
   virt completion.
+- Phase 5 "Polish, Test Matrix, Packaging" implementation.
+- Performance gate tests (`tests/perf_spec.lua`): cold `require("coco")` ≤ 5 ms
+  and modest memory after setup.
+- Vim help documentation (`doc/coco.txt`).
+- Example configs (`examples/minimal.lua`, `examples/snacks.lua`,
+  `examples/telescope.lua`).
+- Packaging: `coco.nvim-scm-1.rockspec` and README install specs for lazy.nvim
+  and vim.pack.
+- Threat-model tests (`tests/security_spec.lua`): log redaction of
+  `Authorization:` and `*_PAT`/`*_TOKEN` env values; MCP server binds to
+  `127.0.0.1`.
+- README overhaul with full config table, statusline, placeholders, and
+  examples.
 
 ### Notes
-- Snowflake metadata, REST/SSE, and inline UI remain stubbed and will be
-  implemented in Phases 3–4.
+- All five phases from `docs/coco-nvim-plan.md` are now implemented.
 - The implementation follows `docs/coco-nvim-plan.md` and
   `docs/coco-neovim-v2.md` (design v2).
+
+## [1.0.0] - Production Readiness
+
+- Full implementation of Phases 1–5.
+- Test matrix: 47+ unit/component/integration/perf/security tests.
+- Documentation: README, Vim help, examples.
+- Packaging: lazy.nvim, vim.pack, rockspec.
+- Threat-model verification and performance gates.
+
+## [0.4.0] - REST / Inline
+
+- REST/SSE client for one-shot answers.
+- Ghost-text completion and context compaction.
+
+## [0.3.0] - Snowflake Context
+
+- Connection/role/warehouse discovery.
+- `@object:<NAME>` metadata injection and caching.
+- Cost feedback.
+
+## [0.2.0] - MCP Server + Native Diffs
+
+- Localhost MCP HTTP server.
+- Editor tools and native diff review.
 
 ## [0.1.0] - Terminal Bridge (MVP)
 

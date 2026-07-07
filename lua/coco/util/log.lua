@@ -50,6 +50,12 @@ end
 ---@param opts { level: string, file: string }
 function M.setup(opts)
   cfg.level = opts.level or cfg.level
+  if opts.file and opts.file ~= cfg.file then
+    if log_file then
+      pcall(log_file.close, log_file)
+      log_file = nil
+    end
+  end
   cfg.file = opts.file or cfg.file
 end
 

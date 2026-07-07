@@ -1,0 +1,159 @@
+*coco.txt*  coco.nvim - Snowflake Cortex Code bridge for Neovim
+
+Author:  you
+License: MIT
+
+==============================================================================
+CONTENTS                                                    *coco-contents*
+
+  1. Introduction ............................... |coco-introduction|
+  2. Installation ............................... |coco-installation|
+  3. Commands ................................... |coco-commands|
+  4. Configuration .............................. |coco-configuration|
+  5. Statusline ................................. |coco-statusline|
+  6. Mappings ................................... |coco-mappings|
+  7. Health ..................................... |coco-health|
+
+==============================================================================
+1. INTRODUCTION                                         *coco-introduction*
+
+coco.nvim is a Neovim bridge for the Snowflake Cortex Code (`cortex`) CLI.
+It provides:
+
+  - A managed terminal wrapper for interactive `cortex` sessions
+  - A local MCP HTTP server exposing editor tools (selection, buffers,
+    diagnostics, file open, diffs)
+  - Snowflake context injection: connections, object metadata (`@object:`),
+    and cost feedback
+  - Optional REST/SSE client for one-shot answers and ghost-text completion
+
+==============================================================================
+2. INSTALLATION                                         *coco-installation*
+
+lazy.nvim: >
+    {
+      "you/coco.nvim",
+      opts = {}
+    }
+<
+
+vim.pack (Neovim >= 0.12): >
+    vim.pack.add("you/coco.nvim")
+    require("coco").setup()
+<
+
+==============================================================================
+3. COMMANDS                                                 *coco-commands*
+
+:CocoStart [opts]           Start a CoCo session. Supports `--resume`.
+:CocoStop                   Stop the active session.
+:Coco                       Toggle the CoCo terminal window.
+:CocoFocus                  Focus the CoCo terminal window.
+:CocoAsk [prompt]           Ask CoCo. Placeholders are expanded.
+:CocoSend [text]            Send raw text to the running terminal.
+:CocoAdd <path> [l1] [l2]   Add a file or range to the context queue.
+:CocoStatus                 Show session status and counters.
+:CocoHealth                 Run `:checkhealth coco`.
+:CocoDiffAccept             Accept the current diff.
+:CocoDiffDeny               Deny the current diff.
+:CocoCloseAllDiffs          Close all diff tabs.
+:CocoConnection             Switch Snowflake connection.
+:CocoSelectModel            Select the active Cortex model.
+:CocoMode [mode]            Cycle or set permission mode
+                            (`confirm`, `plan`, `bypass`).
+:CocoComplete               Trigger ghost-text completion at cursor.
+
+==============================================================================
+4. CONFIGURATION                                       *coco-configuration*
+
+Example: >
+    require("coco").setup({
+      cli = {
+        cmd = "cortex",
+        args = {},
+        auto_start = false,
+        mcp_tool_timeout_ms = 300000,
+      },
+      transport = {
+        terminal = true,
+        mcp = true,
+        rest = { enabled = false },
+      },
+      mcp = {
+        host = "127.0.0.1",
+        port = 0,
+        server_name = "coco-nvim",
+        token_bytes = 16,
+        max_body_bytes = 262144,
+      },
+      snowflake = {
+        connection = nil,
+        role = nil,
+        warehouse = nil,
+        show_cost = true,
+        auto_object_context = true,
+        object_cache = { size = 32, ttl_ms = 300000 },
+      },
+      ui = {
+        terminal = { provider = "auto", position = "right", width = 0.4 },
+        diff = { keymaps = true },
+        virtual_text = true,
+        statusline = true,
+      },
+      permissions = {
+        mode = "confirm",
+        confirm = { openDiff = false, saveDocument = false },
+      },
+      context = { selection_debounce_ms = 50 },
+      log = { level = "info", file = vim.fn.stdpath("cache") .. "/coco.log" },
+    })
+<
+
+==============================================================================
+5. STATUSLINE                                           *coco-statusline*
+
+Add the active Snowflake context to your statusline: >
+    set statusline+=\ %{v:lua.require('coco.ui.statusline').component()}
+<
+
+The component displays `connection · role · warehouse · model · ~credits`
+when a session is active.
+
+==============================================================================
+6. MAPPINGS                                                 *coco-mappings*
+
+Default keymaps are opt-in via `setup({ keymaps = true })` (not yet enabled
+by default).
+
+Inside a diff tab (when `ui.diff.keymaps = true`):
+  <leader>ca    Accept the diff.
+  <leader>cx    Deny the diff.
+
+Standard diff navigation (`]c`, `[c`, `dp`, `do`) works as usual.
+
+==============================================================================
+7. HEALTH                                                     *coco-health*
+
+Run `:checkhealth coco` to verify:
+
+  - Neovim >= 0.10
+  - `cortex` CLI on PATH
+  - optional providers (snacks.nvim, telescope.nvim, fzf-lua)
+  - active MCP port reachability
+
+==============================================================================
+8. PLACEHOLDERS                                           *coco-placeholders*
+
+`:CocoAsk` expands the following placeholders in the prompt:
+
+  @this          Current selection or cursor position.
+  @buffer        Entire current buffer.
+  @buffers       List of open buffers.
+  @diagnostics   LSP diagnostics.
+  @marks         Marks (stub).
+  @quickfix      Quickfix list entries.
+  @visible        Currently visible lines.
+  @object:NAME   Snowflake object metadata.
+
+==============================================================================
+vim:tw=78:ts=2:ft=help:norl:
