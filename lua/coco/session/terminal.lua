@@ -160,6 +160,10 @@ function M.focus()
 end
 
 --- Send text to the running terminal job.
+--- IMPORTANT: Focus the terminal and enter terminal mode BEFORE sending data,
+--- not after. Neovim's PTY may buffer or drop writes when the terminal window
+--- is not actively in terminal mode. This ordering matches how real keypresses
+--- work: focus arrives first, then the keys are typed.
 ---@param text string|nil
 function M.send(text)
   if not text or text == "" then
@@ -172,14 +176,16 @@ function M.send(text)
   end
   local channel = vim.bo[bufnr].channel
   if channel and channel ~= 0 then
-    -- Use \r (CR) instead of \n (LF) to submit. Terminal programs in raw mode
-    -- expect CR for Enter (same as what a real keypress sends to the PTY).
+    -- Step 1: Focus the terminal window first (vim.cmd is sync, so this works immediately)
+    M.focus_window()
+    -- Step 2: Enter terminal insert mode before sending
+    -- This ensures the PTY is in the correct state to accept input
+    vim.cmd("startinsert")
+    -- Step 3: Now send the text with CR (carriage return) to submit
+    -- Use \r (CR) instead of \n (LF) — terminal programs in raw mode expect
+    -- CR for Enter, same as real keypresses sent to the PTY.
     local payload = text:gsub("\n$", "") .. "\r"
     vim.fn.chansend(channel, payload)
-    -- In some Neovim versions/environments, chansend may be buffered or ignored 
-    -- if the terminal window is not focused or in terminal mode.
-    -- We ensure the window is focused and enters terminal mode immediately.
-    M.focus()
   else
     log.warn("terminal job channel not available")
   end
