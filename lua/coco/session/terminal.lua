@@ -173,24 +173,20 @@ function M.send(text)
     return
   end
   local job_id = vim.b[bufnr].terminal_job_id
-  if job_id and job_id ~= 0 then
-    -- Focus and enter terminal mode first
-    M.focus()
-    -- Use jobsend - it handles PTY state management internally
-    -- Append \r to submit the line
+  local channel = vim.bo[bufnr].channel
+  -- Focus and enter terminal mode first. The actual send is deferred so the
+  -- PTY has time to fully initialize after startinsert before input arrives.
+  M.focus()
+  vim.defer_fn(function()
     local payload = text:gsub("\n$", "") .. "\r"
-    vim.fn.jobsend(job_id, payload)
-  else
-    -- Fallback to chansend
-    local channel = vim.bo[bufnr].channel
-    if channel and channel ~= 0 then
-      M.focus()
-      local payload = text:gsub("\n$", "") .. "\r"
+    if job_id and job_id ~= 0 then
+      vim.fn.jobsend(job_id, payload)
+    elseif channel and channel ~= 0 then
       vim.fn.chansend(channel, payload)
     else
       log.warn("terminal job channel not available")
     end
-  end
+  end, 30)
 end
 
 return M
