@@ -117,10 +117,8 @@ function M.send(text)
   if not text or text == "" then
     return
   end
-  -- Send text first (chansend works regardless of current window/mode),
-  -- then switch focus so the user sees the terminal output.
+  -- The terminal.send() now handles focus and startinsert internally.
   terminal.send(text)
-  terminal.focus()
 end
 
 --- Print session status.

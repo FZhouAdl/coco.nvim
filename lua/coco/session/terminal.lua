@@ -176,6 +176,10 @@ function M.send(text)
     -- expect CR for Enter (same as what a real keypress sends to the PTY).
     local payload = text:gsub("\n$", "") .. "\r"
     vim.fn.chansend(channel, payload)
+    -- In some Neovim versions/environments, chansend may be buffered or ignored 
+    -- if the terminal window is not focused or in terminal mode.
+    -- We ensure the window is focused and enters terminal mode immediately.
+    M.focus()
   else
     log.warn("terminal job channel not available")
   end
