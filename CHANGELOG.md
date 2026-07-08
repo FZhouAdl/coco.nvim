@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Command registration (`lua/coco/plugin/commands.lua`) for `:CocoStart`,
   `:CocoStop`, `:Coco`, `:CocoFocus`, `:CocoAsk`, `:CocoSend`, `:CocoAdd`,
   `:CocoStatus`, `:CocoHealth`, and diff placeholders.
+- Default key binding `<leader>cc` for `:CocoStart` (registered in
+  `lua/coco/init.lua:setup()`).
 - Input UI (`lua/coco/ui/input.lua`) using snacks.input or `vim.ui.input`.
 - Statusline component (`lua/coco/ui/statusline.lua`).
 - Health check (`lua/coco/health.lua`) covering Neovim version, `cortex`

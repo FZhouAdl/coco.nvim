@@ -31,6 +31,10 @@ function M.setup(opts)
   log.info("coco.nvim setup complete")
   require("coco.plugin.commands").register()
 
+  vim.keymap.set("n", "<leader>cc", function()
+    M.start()
+  end, { desc = "CocoStart", silent = true })
+
   if config.get().cli.auto_start then
     M.start()
   end

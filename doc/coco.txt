@@ -122,6 +122,8 @@ when a session is active.
 ==============================================================================
 6. MAPPINGS                                                 *coco-mappings*
 
+`<leader>cc`      Start a CoCo session (`:CocoStart`).
+
 Inside a diff tab (when `ui.diff.keymaps = true`):
   <leader>ca    Accept the diff.
   <leader>cx    Deny the diff.
