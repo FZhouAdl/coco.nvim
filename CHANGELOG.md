@@ -107,6 +107,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - REST streaming callbacks are now scheduled on the main loop to avoid crashes.
+- `:CocoAsk` now submits the prompt as a single line: embedded newlines in the
+  payload (e.g. the appended "Context files:" block) are collapsed to spaces
+  before the single trailing `\r` is sent to the terminal job. Previously the
+  raw `\n` characters were translated by the PTY line discipline into premature
+  Enter keypresses, fragmenting a multi-segment prompt across several submits
+  so only the first line reached Cortex and the rest was dropped.
 - REST client keeps the bearer token off `curl` argv and returns the process
   handle for cancellation.
 - Visual selection now uses live cursor positions instead of stale `'<`/`'>` marks.

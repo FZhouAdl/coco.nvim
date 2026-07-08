@@ -162,6 +162,14 @@ end
 --- Send text to the running terminal job.
 --- Uses jobsend which is the higher-level job API that handles PTY communication
 --- and avoids potential buffering issues with low-level chansend.
+---
+--- The interactive CLI (cortex) reads its prompt box one submitted line at a
+--- time. A raw newline in the payload is translated by the PTY line discipline
+--- into an Enter keypress, so any embedded `\n` would split a single prompt
+--- into several premature submits — the first line gets submitted before the
+--- rest of the text is typed. To keep a multi-segment prompt (e.g. a question
+--- plus appended context files) intact as one submission, internal newlines are
+--- flattened to spaces and a single trailing `\r` performs the submit.
 ---@param text string|nil
 function M.send(text)
   if not text or text == "" then
@@ -178,7 +186,9 @@ function M.send(text)
   -- PTY has time to fully initialize after startinsert before input arrives.
   M.focus()
   vim.defer_fn(function()
-    local payload = text:gsub("\n$", "") .. "\r"
+    -- Collapse any embedded newlines to spaces so the entire text reaches the
+    -- CLI as a single line, then terminate with \r to submit it.
+    local payload = text:gsub("[\r\n]+", " "):gsub("%s+$", "") .. "\r"
     if job_id and job_id ~= 0 then
       vim.fn.jobsend(job_id, payload)
     elseif channel and channel ~= 0 then
